@@ -1,0 +1,568 @@
+from database.danQuery import database_load
+import time
+from services.danEmailServices import DanEmailServices
+from Interface.modelInterface import ModelInterface
+class AuthModels:
+    async def modelAuth(email,password):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT us_email, us_userid, us_verified, us_name, us_businessname, us_subname FROM dan_main WHERE us_email = '{email}' && us_password = '{password}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except Exception:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData
+        DTOData = ModelInterface(resultData)
+        return DTOData
+    
+    async def modelCallListUser(clientID):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT fg_main, ac_id, ac_name, ac_password, ac_number, ac_gener, ac_ubicacion, ac_date FROM dan_user WHERE fg_main='{clientID}'")
+            resultData = query.fetchall()
+            connect.commit()
+            DTOData = ModelInterface(resultData)
+            return DTOData
+        except: 
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData     
+
+    async def modelRegister(email, name, businessName, password, iduser):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"INSERT INTO dan_main(us_verified, us_email, us_password, us_name, us_businessname, us_userid) VALUES ('1','{email}','{password}', '{name}', '{businessName}', '{iduser}')")
+            connect.commit()
+            DTOData = ModelInterface("SUCCESS_QUERY_RESPONSE")
+            return DTOData
+        except: 
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData       
+            
+    async def modelRegisterAccount(globalUser, name, number, password, selectedOption, timeDesing, iduser, userIdSQL):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"INSERT INTO dan_user(fg_main, ac_id, ac_name, ac_password, ac_number, ac_gener, ac_ubicacion, ac_date) VALUES ('{userIdSQL}', '{iduser}','{name}','{password}','{number}','{selectedOption}','{globalUser}', '{timeDesing}')")
+            connect.commit()
+            DTOData = ModelInterface("SUCCESS_QUERY_RESPONSE")
+            return DTOData
+        except: 
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData    
+         
+
+from database.danQuery import database_load
+import time
+from Interface.modelInterface import ModelInterface
+class BusinessModel:
+    async def modelCreateBusiness(userId, nombre, ubicacion, rif, numero):
+       try:
+            (connect, query)= await database_load()
+            query.execute(f"INSERT INTO dan_shop(fg_main, shop_name, shop_location, shop_rif, shop_number) VALUES ('{userId}','{nombre}','{ubicacion}','{rif}','{numero}')")
+            connect.commit()
+            DTOData = ModelInterface("SUCCESS_QUERY_RESPONSE")
+            return DTOData
+       except: 
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData 
+
+    async def modelCallBusiness(getUserId):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT pk_shop, shop_name, shop_location, shop_rif, shop_number FROM dan_shop WHERE fg_main = '{getUserId}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData 
+        DTOData = ModelInterface(resultData)
+        return DTOData 
+
+    async def modelQueryBusiness(idNegocio):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT com_name, com_dueno, com_tel, com_rif, com_date, com_info, com_ubi FROM dan_company WHERE pk_company = '{idNegocio}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData 
+        DTOData = ModelInterface(resultData)
+        return DTOData  
+
+    async def modelDeleteBusiness(idBusiness):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"DELETE FROM dan_company WHERE pk_company = '{idBusiness}'")
+            query.execute(f"DELETE FROM dan_com_user WHERE fg_company = '{idBusiness}'")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData  
+        DTOData = ModelInterface("DELETE_QUERY_RESPONSE")
+        return DTOData            
+
+    async def modelGenerateReport(callsentProduct, nameUser, IdBusiness, nameClient, reportUid):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"INSERT INTO dan_report(report_uid,report_client, report_user, report_company) VALUES ('{reportUid}','{nameClient}', '{nameUser}', '{IdBusiness}')")
+            connect.commit()
+            time.sleep(1)
+            query.execute(f"SELECT report_id FROM dan_report WHERE report_client = '{nameClient}' && report_uid = '{reportUid}'")
+            resultData = query.fetchall()
+            if resultData == [] or resultData == False or len(resultData) <= 0:
+                DTOData = ModelInterface("EMPTY_QUERY_RESPONSE")
+                return DTOData
+            for data in callsentProduct: 
+                query.execute(f"INSERT INTO dan_invoice(re_invoice, re_idproduct, re_nameProduct, re_currencyProduct, re_varTotal, re_amount) VALUES ('{resultData[0][0]}', '{data['idProduct']}', '{data['nameProduct']}', '{data['currencyProduct']}', '{data['varTotal']}', '{data['varStock']}')")
+                query.execute(f"UPDATE dan_product SET pr_amount= (pr_amount - '{data['varStock']}') WHERE pr_name = '{data['nameProduct']}' && pk_product = '{data['idProduct']}'")
+                time.sleep(1)
+            connect.commit()
+        except: 
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData 
+        DTOData = ModelInterface("SUCCESS_QUERY_RESPONSE")
+        return DTOData
+    
+    async def modelSearchReport(idBusiness):
+        try:
+            (connect, query)= await database_load() 
+            query.execute(f"SELECT rep.report_id, rep.report_client, rep.report_company, us.us_name, us.us_lastname, rep.report_date, client.cli_phone, client.cli__cid FROM dan_report as rep, dan_user as us, dan_client as client WHERE rep.report_user = us.us_userid && rep.report_client = client.cli_name && rep.report_company = '{idBusiness}' ORDER BY rep.report_id DESC")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData 
+        DTOData = ModelInterface(resultData)
+        return DTOData 
+
+    async def modelSearchReportID(idReportData):
+        try:
+            (connect, query)= await database_load()     
+            query.execute(f"SELECT re_idproduct, re_nameProduct, re_currencyProduct, re_varTotal, re_amount, client.cli_name, client.cli__cid, client.cli_phone, client.cli_payment, client.cli_address, re.report_company, re.report_date FROM dan_invoice as invo, dan_report as re, dan_client as client WHERE re_invoice = '{idReportData}' && re.report_client = client.cli_name && invo.re_invoice = re.report_id")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData 
+        DTOData = ModelInterface(resultData)
+        return DTOData                  
+
+    async def modelGetGlobal(idBusiness):
+        try:
+            (connect, query)= await database_load() 
+            query.execute(f"SELECT COUNT(cli_name) FROM dan_client WHERE fg_company = '{idBusiness}'");
+            clienteData = query.fetchall()
+            query.execute(f"SELECT SUM(invo.re_varTotal) FROM dan_invoice as invo, dan_report as re WHERE invo.re_invoice = re.report_id && re_currencyProduct = 'dolares' && report_company = '{idBusiness}'");
+            dolaresTotalData = query.fetchall()
+            query.execute(f"SELECT SUM(invo.re_varTotal) FROM dan_invoice as invo, dan_report as re WHERE invo.re_invoice = re.report_id && re_currencyProduct = 'pesos' && report_company = '{idBusiness}'");
+            pesosTotalData = query.fetchall()
+            query.execute(f"SELECT SUM(invo.re_varTotal) FROM dan_invoice as invo, dan_report as re WHERE invo.re_invoice = re.report_id && re_currencyProduct = 'bolivares' && report_company = '{idBusiness}'");
+            bolivaresTotalData = query.fetchall()
+            query.execute(f"SELECT SUM(invo.re_varTotal) FROM dan_invoice as invo, dan_report as re WHERE re.report_date = curdate() && invo.re_invoice = re.report_id && re.report_company = '{idBusiness}' && invo.re_currencyProduct = 'dolares'");
+            dolaresDiarios = query.fetchall()
+            query.execute(f"SELECT SUM(invo.re_varTotal) FROM dan_invoice as invo, dan_report as re WHERE re.report_date = curdate() && invo.re_invoice = re.report_id && re.report_company = '{idBusiness}' && invo.re_currencyProduct = 'bolivares'");
+            bolivaresDiarios = query.fetchall()
+            query.execute(f"SELECT SUM(invo.re_varTotal) FROM dan_invoice as invo, dan_report as re WHERE re.report_date = curdate() && invo.re_invoice = re.report_id && re.report_company = '{idBusiness}' && invo.re_currencyProduct = 'pesos'");
+            pesosDiarios = query.fetchall()
+            query.execute(f"SELECT SUM(invo.re_amount) FROM dan_invoice as invo, dan_report as re WHERE re.report_date = curdate() && invo.re_invoice = re.report_id && re.report_company = '{idBusiness}'");
+            productosDiarios = query.fetchall()
+            connect.commit()
+            sendJSONData = [clienteData, dolaresTotalData, pesosTotalData,bolivaresTotalData,  dolaresDiarios, pesosDiarios, bolivaresDiarios, productosDiarios];
+        except: 
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData 
+        DTOData = ModelInterface(sendJSONData)
+        return DTOData   
+          from database.danQuery import database_load
+from Interface.modelInterface import ModelInterface
+class ClientModel:
+    async def modelCreateClient(idBusiness, name, address, cid, phone, idAccount):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"INSERT INTO dan_client(fg_company, cli_name, cli_address, cli__cid, cli_phone, fg_account) VALUES ('{idBusiness}', '{name}', '{address}', '{cid}', '{phone}', '{idAccount}')")
+            connect.commit()
+        except: 
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData
+        DTOData = ModelInterface("SUCCESS_QUERY_RESPONSE")
+        return DTOData
+
+    async def modelChangeClient(idClient,name, address, cid, phone):
+        try:
+            (connect, query)= await database_load()
+            if name != 'false' and name is not False:
+                query.execute(f"UPDATE dan_client SET cli_name = '{name}' WHERE pk_client = '{idClient}'")  
+            if address != 'false' and address is not False:
+                query.execute(f"UPDATE dan_client SET cli_address = '{address}' WHERE pk_client = '{idClient}'")
+            if cid != 'false' and cid is not False:
+                query.execute(f"UPDATE dan_client SET cli__cid = '{cid}' WHERE pk_client = '{idClient}'")
+            if phone != 'false' and phone is not False:
+                query.execute(f"UPDATE dan_client SET cli_phone = '{phone}' WHERE pk_client = '{idClient}'")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData
+        DTOData = ModelInterface("SUCCESS_QUERY_RESPONSE")
+        return DTOData            
+
+    async def modelDeleteClient(idClient):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"DELETE FROM dan_client WHERE pk_client = '{idClient}'")
+            connect.commit()
+        except: 
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData
+        DTOData = ModelInterface("DELETE_QUERY_RESPONSE")
+        return DTOData           
+               
+
+    async def modelCallClient(idBusiness):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT pk_client, cli_name, cli__cid, cli_phone FROM dan_client WHERE fg_company = '{idBusiness}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData
+        DTOData = ModelInterface(resultData)
+        return DTOData                      
+
+    async def modelCallIDClient(idClient, idBusiness):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT cli_name, cli__cid, cli_phone, cli_address FROM dan_client WHERE fg_company = '{idBusiness}' && pk_client = '{idClient}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData            
+        DTOData = ModelInterface(resultData)
+        return DTOData
+
+    async def modelSearchClient(IdBusiness, nameSearch):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT pk_client, cli_name, cli__cid, cli_phone FROM dan_client WHERE (cli_name LIKE '{nameSearch}%' OR cli__cid LIKE '{nameSearch}%' OR cli_phone LIKE '{nameSearch}%') && fg_company = '{IdBusiness}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData    
+        DTOData = ModelInterface(resultData)
+        return DTOData                    
+        
+from database.danQuery import database_load
+from Interface.modelInterface import ModelInterface
+class MemberModel:
+    async def modelCallMember(idBusiness):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT  us.us_name, us.us_lastname, comus.`fg_user`, comus.`cous_range` FROM `dan_com_user` as comus, `dan_user` as us WHERE fg_company = '{idBusiness}' && us.`us_userid` = comus.`fg_user`")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData
+        DTOData = ModelInterface(resultData)
+        return DTOData
+
+    async def modelPermissionsMember(idBusiness, idUser, selectedOption):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"UPDATE `dan_com_user` SET `cous_range`='{selectedOption}' WHERE fg_company = '{idBusiness}' && fg_user = '{idUser}'")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData   
+        DTOData = ModelInterface("SUCCESS_QUERY_RESPONSE")
+        return DTOData                   
+
+    async def modelKickMember(idBusiness, sendUserId):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"DELETE FROM `dan_com_user` WHERE fg_company = '{idBusiness}' && fg_user = '{sendUserId}'")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData    
+        DTOData = ModelInterface("DELETE_QUERY_RESPONSE")
+        return DTOData     
+                   
+    async def modelSearchMember(searchUser, userId):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT `us_userid`, `us_name`, `us_lastname`, `us_subname` FROM `dan_user` WHERE (us_name LIKE '{searchUser}%' OR us_userid LIKE '{searchUser}%') && us_userid != '{userId}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData    
+        DTOData = ModelInterface(resultData)
+        return DTOData                         
+
+    async def modelInviteMember(userId, userIdInvite, inviteType, inviteStatus):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"INSERT INTO `dan_invite`(`fg_byuser`, `fg_inviteuser`, `invite_type`, `invite_status`) VALUES ('{userId}', '{userIdInvite}', '{inviteType}', '{inviteStatus}')")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData  
+        DTOData = ModelInterface("SUCCESS_QUERY_RESPONSE")
+        return DTOData                          
+
+    async def modelInviteBusinessMember(idBusiness, userId, userIdInvite, inviteType, inviteStatus):
+        try: 
+            (connect, query)= await database_load()
+            query.execute(f"INSERT INTO `dan_invite`(`fg_byuser`, `fg_inviteuser`, `invite_type`, `invite_status`, `invite_business`) VALUES ('{userId}', '{userIdInvite}', '{inviteType}', '{inviteStatus}', '{idBusiness}')")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData  
+        DTOData = ModelInterface("SUCCESS_QUERY_RESPONSE")
+        return DTOData                      
+
+    async def modelSearchInvitesMember(getUserInvite):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT us.us_name, us.us_lastname, us.us_userid, inv.invite_type, inv.invite_business  FROM dan_user as us, dan_invite as inv WHERE inv.fg_inviteuser = '{getUserInvite}' AND inv.fg_byuser = us.us_userid AND inv.invite_status = 1")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData  
+        DTOData = ModelInterface(resultData)
+        return DTOData                     
+
+    async def modelDeleteInvitesMember(getUserByInvite, getUserToInvite):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"DELETE FROM `dan_invite` WHERE fg_byuser = '{getUserToInvite}' && fg_inviteuser = '{getUserByInvite}'")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData       
+        DTOData = ModelInterface("DELETE_QUERY_RESPONSE")
+        return DTOData    
+
+    async def modelDeleteInvitesBusiness(getUserByInvite, idNegocio):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"DELETE FROM `dan_invite` WHERE invite_business = '{idNegocio}' && fg_inviteuser = '{getUserByInvite}'")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData  
+        DTOData = ModelInterface("DELETE_QUERY_RESPONSE")
+        return DTOData                      
+
+    async def modelAcceptInvitesMember(getUserByInvite, getUserToInvite):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"DELETE FROM `dan_invite` WHERE fg_byuser = '{getUserToInvite}' && fg_inviteuser = '{getUserByInvite}'")
+            connect.commit()
+            query.execute(f"INSERT INTO `dan_friendlist`(`friend_byuser`, `friend_touser`, `friend_status`) VALUES ('{getUserByInvite}', '{getUserToInvite}', 1)")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData  
+        DTOData = ModelInterface("DELETE_QUERY_RESPONSE")
+        return DTOData                      
+
+    async def modelAcceptInvitesBusiness(getUserByInvite, idNegocio):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"DELETE FROM `dan_invite` WHERE invite_business = '{idNegocio}' && fg_inviteuser = '{getUserByInvite}'")
+            connect.commit()
+            query.execute(f"INSERT INTO `dan_com_user`(`fg_company`, `fg_user`, `cous_range`) VALUES ('{idNegocio}','{getUserByInvite}', 0)")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData
+        DTOData = ModelInterface("DELETE_QUERY_RESPONSE")
+        return DTOData            
+
+    async def modelSearchListFriend(getUserInvite):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT us.`us_userid`, friend.`friend_status`, us.`us_name`, us.`us_lastname` FROM `dan_friendlist` as friend, dan_user as us WHERE (friend.`friend_byuser` = '{getUserInvite}' OR friend.friend_touser = '{getUserInvite}') AND (us.us_userid = friend.friend_byuser OR us.us_userid = friend.friend_touser) AND us.us_userid != '{getUserInvite}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData
+        DTOData = ModelInterface(resultData)
+        return DTOData                       
+
+    async def modelLoadName(userFriend):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT us_name, us_lastname FROM dan_user WHERE us_userid = '{userFriend}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData     
+        DTOData = ModelInterface(resultData)
+        return DTOData             
+
+    async def modelViewData(idUser):
+        try:
+            (connect, query)= await database_load()   
+            query.execute(f"SELECT `us_password` FROM `dan_user` WHERE us_userid = '{idUser}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData 
+        DTOData = ModelInterface(resultData)
+        return DTOData                    
+
+    async def modelChangeData(idUser, newPassword):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"UPDATE `dan_user` SET `us_password`='{newPassword}' WHERE `us_userid` = '{idUser}'")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData        
+        DTOData = ModelInterface("SUCCESS_QUERY_RESPONSE")
+        return DTOData        
+
+        from database.danQuery import database_load
+from Interface.modelInterface import ModelInterface
+class MessageModel:
+    async def modelCreateMessage(userId, UserFriend, uid, message):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"INSERT INTO dan_message(me_messageId, fg_send_user, fg_to_user, me_content) VALUES ('{uid}', '{userId}', '{UserFriend}','{message}')")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData     
+        DTOData = ModelInterface("SUCCESS_QUERY_RESPONSE")
+        return DTOData      
+
+    async def modelSearchMessage(UserId, UserFriend):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT us.ac_name, me_messageId, me_content, me_image, me_file, me_date FROM dan_message as msg, dan_user as us WHERE (fg_send_user = '{UserId}' AND fg_to_user = '{UserFriend}' AND us.ac_id = '{UserId}') OR (fg_send_user = '{UserFriend}' AND fg_to_user = '{UserId}' AND us.ac_id = '{UserFriend}')")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData     
+        DTOData = ModelInterface(resultData)
+        return DTOData          
+
+    async def modelSearchBotMessage(UserId):
+        try:
+            (connect, query)= await database_load()  
+            query.execute(f"SELECT pk_chatbot, chatbot_isDante, chatbot_message, chatbot_date FROM dan_chatbot WHERE fg_userid = '{UserId}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData  
+        DTOData = ModelInterface(resultData)
+        return DTOData                       
+
+    async def modelMessageAPIBot(userId, MessageSend, chabot):
+          return await DanteAligheri.StartQueryAI(userId, MessageSend, chabot)      
+
+     
+        
+     from database.danQuery import database_load
+from Interface.modelInterface import ModelInterface
+class ProductsModel:
+    async def modelCreateProduct(idBusiness, name, cost, price, category, idAccount):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"INSERT INTO dan_product(fg_company, pr_name, pr_cost, pr_price, pr_category, fg_account) VALUES ('{idBusiness}', '{name}', '{cost}', '{price}', '{category}', '{idAccount}')")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData     
+        DTOData = ModelInterface("SUCCESS_QUERY_RESPONSE")
+        return DTOData                     
+
+    async def modelCallProduct(idBusiness):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT pk_product, fg_company, pr_name, pr_amount, pr_currency, pr_cost, pr_price, pr_date FROM dan_product WHERE fg_company = '{idBusiness}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData     
+        DTOData = ModelInterface(resultData)
+        return DTOData    
+
+    async def modelSearchProduct(nameSearch, IdBusiness):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT pk_product, fg_company, pr_name, pr_amount, pr_currency, pr_cost, pr_price, pr_date, pr_category FROM dan_product WHERE (pr_name LIKE '{nameSearch}%') && fg_company = '{IdBusiness}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData     
+        DTOData = ModelInterface(resultData)
+        return DTOData    
+
+    async def modelSearchIDProduct(idBusiness, idProduct):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT pk_product, fg_company, pr_name, pr_amount, pr_currency, pr_cost, pr_price, pr_date, pr_category FROM dan_product WHERE fg_company = '{idBusiness}' && pk_product = '{idProduct}' ")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData     
+        DTOData = ModelInterface(resultData)
+        return DTOData    
+
+    async def modelChangeProduct(idProduct, name, amount, cost, sent, category):
+        try:
+            (connect, query)= await database_load()
+            if name != 'false' and name is not False:
+                query.execute(f"UPDATE dan_product SET pr_name = '{name}' WHERE pk_product = '{idProduct}'")  
+            if amount != 'false' and amount is not False:
+                query.execute(f"UPDATE dan_product SET pr_amount = '{amount}' WHERE pk_product = '{idProduct}'")
+            if cost != 'false' and cost is not False:
+                query.execute(f"UPDATE dan_product SET pr_cost = '{cost}' WHERE pk_product = '{idProduct}'")
+            if sent != 'false' and sent is not False:
+                query.execute(f"UPDATE dan_product SET pr_price = '{sent}' WHERE pk_product = '{idProduct}'")
+            if category != 'false' and category is not False:
+                query.execute(f"UPDATE dan_product SET pr_category = '{category}' WHERE pk_product = '{idProduct}'")
+            connect.commit()     
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData 
+        DTOData = ModelInterface("SUCCESS_QUERY_RESPONSE")
+        return DTOData      
+    async def modelDeleteProduct(idProduct):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"DELETE FROM dan_product WHERE pk_product = '{idProduct}'")
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData 
+        DTOData = ModelInterface("DELETE_QUERY_RESPONSE")
+        return DTOData  
+            
+
+    async def modelFirstProduct(nameSearch):
+        try:
+            (connect, query)= await database_load()
+            query.execute(f"SELECT pk_product, fg_company, pr_name, pr_amount, pr_currency, pr_cost, pr_price, pr_date FROM dan_product WHERE fg_company = '{nameSearch}'")
+            resultData = query.fetchall()
+            connect.commit()
+        except:
+            DTOData = ModelInterface("BAD_QUERY_RESPONSE")
+            return DTOData 
+        DTOData = ModelInterface(resultData)
+        return DTOData  
