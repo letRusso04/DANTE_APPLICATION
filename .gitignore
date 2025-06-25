@@ -153,4 +153,8 @@ app.*.symbols
 !**/ios/**/default.pbxuser
 !**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
+<<<<<<< HEAD
 !/dev/ci/**/Gemfile.lock
+=======
+!/dev/ci/**/Gemfile.lock
+>>>>>>> 272fdda72c320b20334d6bb372da36d83864f4ef
