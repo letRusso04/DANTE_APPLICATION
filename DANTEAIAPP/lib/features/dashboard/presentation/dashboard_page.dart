@@ -1,5 +1,4 @@
 import 'package:danteai/features/dashboard/presentation/widgets/latest_clients.dart';
-import 'package:danteai/features/dashboard/presentation/widgets/sales_chart.dart';
 import 'package:danteai/features/dashboard/presentation/widgets/summary_cards.dart';
 import 'package:danteai/features/dashboard/presentation/widgets/top_products.dart';
 import 'package:danteai/presentation/widgets/app_drawer.dart';
@@ -25,9 +24,6 @@ class _DashboardPageState extends State<DashboardPage> {
         context.go('/dashboard'); // Ruta del inicio/dashboard
         break;
       case 1:
-        context.go('/notificaciones'); // Ruta notificaciones
-        break;
-      case 2:
         context.go('/cuenta'); // Ruta cuenta o perfil usuario
         break;
     }
@@ -98,7 +94,6 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             const SummaryCards(),
             const SizedBox(height: 24),
-            const SalesChart(),
             const SizedBox(height: 24),
             const LatestClients(),
             const SizedBox(height: 24),
@@ -112,10 +107,7 @@ class _DashboardPageState extends State<DashboardPage> {
         unselectedItemColor: Colors.white38,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Inicio'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'Notificaciones',
-          ),
+
           BottomNavigationBarItem(
             icon: Icon(Icons.account_circle),
             label: 'Cuenta',

@@ -1,8 +1,12 @@
+import 'dart:convert';
+
+import 'package:danteai/core/storage/auth_storage.dart';
+import 'package:danteai/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:animated_background/animated_background.dart';
-import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:audioplayers/audioplayers.dart';
-import "package:go_router/go_router.dart";
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -18,27 +22,23 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   bool _showAstronaut = false;
   bool isLoading = false;
 
+  final _formKey = GlobalKey<FormState>();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-
     _formController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-
     _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero).animate(
-          CurvedAnimation(parent: _formController, curve: Curves.easeOutExpo),
+        Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
+          CurvedAnimation(parent: _formController, curve: Curves.easeOutCubic),
         );
-
     Future.delayed(const Duration(milliseconds: 500), () {
-      setState(() {
-        _showAstronaut = true;
-      });
+      setState(() => _showAstronaut = true);
       _formController.forward();
       _playMusic();
     });
@@ -48,7 +48,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     try {
       await _audioPlayer.setReleaseMode(ReleaseMode.loop);
       await _audioPlayer.play(AssetSource('audio/space_ambient.mp3'));
-      print("🎵 Música espacial iniciada en login.");
     } catch (e) {
       print("⚠️ Error al reproducir música: $e");
     }
@@ -63,120 +62,143 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  void _submitLogin() async {
+  Future<void> _submitLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
     setState(() => isLoading = true);
-    await Future.delayed(const Duration(seconds: 2)); // Simular login
+    final res = await AuthProvider.login(
+      emailController.text.trim(),
+      passwordController.text.trim(),
+    );
     setState(() => isLoading = false);
-    context.go('/dashboard');
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Login exitoso")));
-    // Aquí puedes navegar a la pantalla principal
+    String token = res?['access_token'];
+    if (res != null && res['access_token'] != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', res['access_token']);
+      await prefs.setString('company', jsonEncode(res['company']));
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Login exitoso")));
+      context.go('/usuarios');
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Credenciales inválidas")));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF0F0F1A),
       body: Stack(
         children: [
-          // Fondo estrellado
-          Positioned.fill(
-            child: Image.asset('assets/images/space_bg.png', fit: BoxFit.cover),
-          ),
-          // Partículas animadas
+          Positioned.fill(child: Container(color: const Color(0xFF0F0F1A))),
           Positioned.fill(
             child: AnimatedBackground(
               vsync: this,
               behaviour: RandomParticleBehaviour(
                 options: ParticleOptions(
-                  baseColor: Colors.white.withOpacity(0.7),
-                  particleCount: 100,
-                  spawnMinSpeed: 10,
-                  spawnMaxSpeed: 30,
-                  spawnOpacity: 0.2,
-                  minOpacity: 0.1,
-                  maxOpacity: 0.4,
+                  baseColor: Colors.white.withOpacity(0.1),
+                  particleCount: 40,
+                  spawnMinSpeed: 5,
+                  spawnMaxSpeed: 10,
+                  spawnOpacity: 0.05,
+                  minOpacity: 0.02,
+                  maxOpacity: 0.1,
                 ),
               ),
               child: const SizedBox.expand(),
             ),
           ),
-
-          // Astronauta animado
           AnimatedPositioned(
-            duration: const Duration(milliseconds: 5000),
+            duration: const Duration(milliseconds: 4000),
             curve: Curves.easeOutBack,
             bottom: 0,
-            left: _showAstronaut ? 200 : -200,
-            child: Image.asset('assets/images/astronaut.png', height: 260),
+            left: _showAstronaut ? 150 : -250,
+            child: Image.asset('assets/images/astronaut.png', height: 240),
           ),
-
-          // Formulario animado
           Center(
             child: SlideTransition(
               position: _slideAnimation,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(28),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.65),
-                    borderRadius: BorderRadius.circular(24),
+                    color: const Color(0xFF1C1C2B),
+                    borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.purple.withOpacity(0.5),
-                        blurRadius: 20,
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      DefaultTextStyle(
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        child: AnimatedTextKit(
-                          animatedTexts: [
-                            TypewriterAnimatedText(
-                              'LOGIN DE EMPRESA',
-                              speed: const Duration(milliseconds: 80),
-                            ),
-                          ],
-                          totalRepeatCount: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      _buildInput(emailController, 'Email corporativo'),
-                      const SizedBox(height: 12),
-                      _buildInput(
-                        passwordController,
-                        'Contraseña',
-                        isPassword: true,
-                      ),
-                      const SizedBox(height: 24),
-                      isLoading
-                          ? const CircularProgressIndicator(
-                              color: Colors.purpleAccent,
-                            )
-                          : _buildButton(),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pushReplacementNamed(context, '/register');
-                        },
-                        child: const Text(
-                          '¿No tienes cuenta? Regístrate',
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Iniciar sesión',
                           style: TextStyle(
-                            color: Colors.white70,
-                            decoration: TextDecoration.underline,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 24),
+                        _buildInput(
+                          emailController,
+                          'Correo corporativo',
+                          validator: (val) {
+                            if (val == null || val.isEmpty) {
+                              return 'Campo obligatorio';
+                            }
+                            final emailRegex = RegExp(
+                              r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                            );
+                            return emailRegex.hasMatch(val)
+                                ? null
+                                : 'Formato esperado: ejemplo@dominio.com';
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInput(
+                          passwordController,
+                          'Contraseña',
+                          isPassword: true,
+                          validator: (val) {
+                            if (val == null || val.isEmpty) {
+                              return 'Campo obligatorio';
+                            }
+                            return val.length >= 6
+                                ? null
+                                : 'Mínimo 6 caracteres';
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                        isLoading
+                            ? const CircularProgressIndicator(
+                                color: Colors.deepPurpleAccent,
+                              )
+                            : _buildButton(),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () => context.go('/register'),
+                          child: const Text(
+                            '¿No tienes cuenta? Regístrate',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -191,11 +213,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     TextEditingController controller,
     String label, {
     bool isPassword = false,
+    String? Function(String?)? validator,
   }) {
-    return TextField(
+    return TextFormField(
       controller: controller,
       obscureText: isPassword,
       style: const TextStyle(color: Colors.white),
+      validator: validator,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white70),
@@ -215,13 +239,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       child: ElevatedButton(
         onPressed: _submitLogin,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF7A3DA3),
+          backgroundColor: Colors.deepPurpleAccent,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          elevation: 8,
-          shadowColor: Colors.purpleAccent,
+          elevation: 6,
         ),
         child: const Text(
           "Ingresar",

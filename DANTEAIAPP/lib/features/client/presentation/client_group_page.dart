@@ -1,5 +1,8 @@
+import 'package:danteai/core/config/config_server.dart';
 import 'package:danteai/presentation/widgets/app_drawer.dart';
+import 'package:danteai/providers/client_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
 class ClientGroupsPage extends StatefulWidget {
@@ -12,28 +15,29 @@ class ClientGroupsPage extends StatefulWidget {
 class _ClientGroupsPageState extends State<ClientGroupsPage> {
   int _currentIndex = 0;
 
-  final List<Map<String, dynamic>> grupos = [
-    {
-      'nombre': 'VIP',
-      'imagen': 'https://cdn-icons-png.flaticon.com/512/3503/3503788.png',
-      'color': [Color(0xFF7F00FF), Color(0xFFE100FF)],
-    },
-    {
-      'nombre': 'Empresariales',
-      'imagen': 'https://cdn-icons-png.flaticon.com/512/2206/2206368.png',
-      'color': [Color(0xFF00416A), Color(0xFFE4E5E6)],
-    },
-    {
-      'nombre': 'Frecuentes',
-      'imagen': 'https://cdn-icons-png.flaticon.com/512/3126/3126647.png',
-      'color': [Color(0xFF8360C3), Color(0xFF2EBF91)],
-    },
-    {
-      'nombre': 'Inactivos',
-      'imagen': 'https://cdn-icons-png.flaticon.com/512/3984/3984410.png',
-      'color': [Color(0xFF614385), Color(0xFF516395)],
-    },
-  ];
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ClientsProvider>(context, listen: false).fetchClients();
+    });
+
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _onNavTap(int index) {
     setState(() => _currentIndex = index);
@@ -41,28 +45,55 @@ class _ClientGroupsPageState extends State<ClientGroupsPage> {
       case 0:
         break;
       case 1:
-        context.go('/clientes/crear-grupo');
+        context.go('/clientes/crear-cliente');
         break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final clientsProvider = Provider.of<ClientsProvider>(context);
+    final clients = clientsProvider.clients;
+    final isLoading = clientsProvider.isLoading;
+
+    // Filtrar clientes según búsqueda
+    final filteredClients = _searchQuery.isEmpty
+        ? clients
+        : clients.where((client) {
+            final nameLower = client.name.toLowerCase();
+            final emailLower = client.email.toLowerCase();
+            return nameLower.contains(_searchQuery) ||
+                emailLower.contains(_searchQuery);
+          }).toList();
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text(
-          'Grupos de Clientes',
-          style: TextStyle(color: Colors.white),
-        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        title: TextField(
+          controller: _searchController,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Buscar clientes...',
+            hintStyle: const TextStyle(color: Colors.white70),
+            prefixIcon: const Icon(Icons.search, color: Colors.white70),
+            border: InputBorder.none,
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.white70),
+                    onPressed: () {
+                      _searchController.clear();
+                    },
+                  )
+                : null,
+          ),
+        ),
       ),
       drawer: const AppDrawer(),
       body: Stack(
         children: [
-          // 🌌 Fondo animado
           Positioned.fill(
             child: Opacity(
               opacity: 0.2,
@@ -72,93 +103,64 @@ class _ClientGroupsPageState extends State<ClientGroupsPage> {
               ),
             ),
           ),
-
-          // 🧩 Tarjetas de grupos
           Padding(
             padding: const EdgeInsets.all(16),
-            child: GridView.builder(
-              itemCount: grupos.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 20,
-                crossAxisSpacing: 20,
-                childAspectRatio: 0.9,
-              ),
-              itemBuilder: (context, index) {
-                final grupo = grupos[index];
-                final List<Color> gradientColors = List<Color>.from(
-                  grupo['color'],
-                );
-
-                return Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: gradientColors,
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+            child: isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.purpleAccent,
                     ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: gradientColors[0].withOpacity(0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 16,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircleAvatar(
-                        radius: 34,
-                        backgroundColor: Colors.white10,
-                        backgroundImage: NetworkImage(grupo['imagen']),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        grupo['nombre'],
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                  )
+                : filteredClients.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No hay clientes que coincidan con la búsqueda',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: filteredClients.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final client = filteredClients[index];
+                      return Card(
+                        color: Colors.purple.shade900,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const Spacer(),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            context.go(
-                              '/clientes/${grupo['nombre'].toLowerCase()}',
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black.withOpacity(0.2),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundImage: client.avatar != null
+                                ? NetworkImage('$API_AVATAR${client.avatar}')
+                                : const AssetImage(
+                                        'assets/images/avatar_placeholder.png',
+                                      )
+                                      as ImageProvider,
+                          ),
+                          title: Text(
+                            client.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          icon: const Icon(
-                            Icons.arrow_forward,
-                            size: 18,
-                            color: Colors.white,
+                          subtitle: Text(
+                            client.email,
+                            style: const TextStyle(color: Colors.white70),
                           ),
-                          label: const Text(
-                            'Revisar',
-                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          trailing: IconButton(
+                            icon: const Icon(
+                              Icons.arrow_forward_ios,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () {
+                              context.go('/clientes/${client.id}');
+                            },
                           ),
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
@@ -169,8 +171,11 @@ class _ClientGroupsPageState extends State<ClientGroupsPage> {
         unselectedItemColor: Colors.white60,
         onTap: _onNavTap,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Grupos'),
-          BottomNavigationBarItem(icon: Icon(Icons.add), label: 'Crear grupo'),
+          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Clientes'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add),
+            label: 'Crear cliente',
+          ),
         ],
       ),
     );

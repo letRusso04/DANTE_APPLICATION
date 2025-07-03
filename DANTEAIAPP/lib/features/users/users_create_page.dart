@@ -146,8 +146,9 @@ class _UsersCreatePageState extends State<UsersCreatePage> {
                   isPassword: true,
                   validator: (val) {
                     if (val == null || val.isEmpty) return 'Campo obligatorio';
-                    if (val != _passwordController.text)
+                    if (val != _passwordController.text) {
                       return 'Las contraseñas no coinciden';
+                    }
                     return null;
                   },
                 ),

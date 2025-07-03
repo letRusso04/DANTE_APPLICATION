@@ -1,8 +1,8 @@
+import 'package:danteai/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 import 'package:animated_background/animated_background.dart';
-import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:go_router/go_router.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -16,28 +16,53 @@ class _RegisterPageState extends State<RegisterPage>
   final _formKey = GlobalKey<FormState>();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
   final nameController = TextEditingController();
+  final phoneController = TextEditingController();
+  final rifController = TextEditingController();
   final businessController = TextEditingController();
+  final addressController = TextEditingController();
+
+  String selectedCountryCode = '+58';
 
   late AnimationController _animController;
   late Animation<Offset> _slideAnimation;
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool isLoading = false;
 
+  final List<String> latamPrefixes = [
+    '+54',
+    '+591',
+    '+55',
+    '+56',
+    '+57',
+    '+506',
+    '+53',
+    '+593',
+    '+503',
+    '+502',
+    '+504',
+    '+52',
+    '+505',
+    '+507',
+    '+595',
+    '+51',
+    '+1',
+    '+598',
+    '+58',
+  ];
+
   @override
   void initState() {
     super.initState();
-
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-
     _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
-          CurvedAnimation(parent: _animController, curve: Curves.easeOutExpo),
+        Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(
+          CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
         );
-
     _animController.forward();
     _playMusic();
   }
@@ -46,7 +71,6 @@ class _RegisterPageState extends State<RegisterPage>
     try {
       await _audioPlayer.setReleaseMode(ReleaseMode.loop);
       await _audioPlayer.play(AssetSource('audio/space_ambient.mp3'));
-      print("🎵 Música espacial iniciada.");
     } catch (e) {
       print("⚠️ Error al reproducir música: $e");
     }
@@ -59,89 +83,98 @@ class _RegisterPageState extends State<RegisterPage>
     super.dispose();
   }
 
-  void _submitForm() async {
+  Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (passwordController.text != confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Las contraseñas no coinciden")),
+      );
+      return;
+    }
+
     setState(() => isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
+
+    final success = await AuthProvider.register({
+      'email': emailController.text.trim(),
+      'password': passwordController.text,
+      'name': nameController.text.trim(),
+      'phone': '$selectedCountryCode ${phoneController.text.trim()}',
+      'rif': rifController.text.trim(),
+      'company_name': businessController.text.trim(),
+      'address': addressController.text.trim(),
+    });
+
     setState(() => isLoading = false);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Empresa registrada correctamente")),
-    );
-    Navigator.pop(context);
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Empresa registrada correctamente")),
+      );
+      context.go('/login');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Error al registrar empresa")),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF0F0F1A),
       body: Stack(
         children: [
-          // 🌌 Fondo estrellado
-          Positioned.fill(
-            child: Image.asset('assets/images/space_bg.png', fit: BoxFit.cover),
-          ),
-
-          // ✨ Partículas
+          Positioned.fill(child: Container(color: const Color(0xFF0F0F1A))),
           Positioned.fill(
             child: AnimatedBackground(
               vsync: this,
               behaviour: RandomParticleBehaviour(
                 options: ParticleOptions(
-                  baseColor: Colors.white.withOpacity(0.7),
-                  particleCount: 100,
-                  spawnMinSpeed: 10,
-                  spawnMaxSpeed: 30,
-                  spawnOpacity: 0.2,
-                  minOpacity: 0.1,
-                  maxOpacity: 0.4,
+                  baseColor: Colors.white.withOpacity(0.1),
+                  particleCount: 40,
+                  spawnMinSpeed: 5,
+                  spawnMaxSpeed: 10,
+                  spawnOpacity: 0.05,
+                  minOpacity: 0.02,
+                  maxOpacity: 0.1,
                 ),
               ),
               child: const SizedBox.expand(),
             ),
           ),
-
-          // 🧾 Formulario
           Center(
             child: SlideTransition(
               position: _slideAnimation,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 64,
+                  horizontal: 24,
+                  vertical: 48,
                 ),
                 child: Form(
                   key: _formKey,
                   child: Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(32),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.65),
-                      borderRadius: BorderRadius.circular(24),
+                      color: const Color(0xFF1C1C2B),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.purple.withOpacity(0.4),
-                          blurRadius: 20,
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        DefaultTextStyle(
-                          style: const TextStyle(
-                            fontSize: 26,
+                        const Text(
+                          "Registro empresarial",
+                          style: TextStyle(
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
-                          ),
-                          child: AnimatedTextKit(
-                            animatedTexts: [
-                              TypewriterAnimatedText(
-                                "Registra tu empresa",
-                                speed: Duration(milliseconds: 80),
-                              ),
-                            ],
-                            totalRepeatCount: 1,
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -149,19 +182,59 @@ class _RegisterPageState extends State<RegisterPage>
                           emailController,
                           "Correo corporativo",
                           TextInputType.emailAddress,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInput(
-                          passwordController,
-                          "Contraseña",
-                          TextInputType.text,
-                          isPassword: true,
+                          validator: (val) {
+                            if (val == null || val.isEmpty)
+                              return 'Campo obligatorio';
+                            final emailRegex = RegExp(
+                              r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                            );
+                            return emailRegex.hasMatch(val)
+                                ? null
+                                : 'Formato esperado: ejemplo@dominio.com';
+                          },
                         ),
                         const SizedBox(height: 12),
                         _buildInput(
                           nameController,
-                          "Tu nombre",
+                          "Nombre de dueño",
                           TextInputType.name,
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white10,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: DropdownButton<String>(
+                                value: selectedCountryCode,
+                                dropdownColor: const Color(0xFF1C1C2B),
+                                underline: const SizedBox(),
+                                style: const TextStyle(color: Colors.white),
+                                items: latamPrefixes.map((code) {
+                                  return DropdownMenuItem(
+                                    value: code,
+                                    child: Text(code),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  setState(() => selectedCountryCode = value!);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildInput(
+                                phoneController,
+                                "Teléfono de la empresa",
+                                TextInputType.phone,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         _buildInput(
@@ -169,40 +242,81 @@ class _RegisterPageState extends State<RegisterPage>
                           "Nombre de la empresa",
                           TextInputType.text,
                         ),
+                        const SizedBox(height: 12),
+                        _buildInput(
+                          rifController,
+                          "RIF de la empresa",
+                          TextInputType.text,
+                          validator: (val) {
+                            if (val == null || val.isEmpty)
+                              return 'Campo obligatorio';
+                            final rifRegex = RegExp(r'^[JGVEP]-\d{8}-\d$');
+                            return rifRegex.hasMatch(val)
+                                ? null
+                                : 'Ejemplo formato esperado: J-12345678-9';
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInput(
+                          addressController,
+                          "Ubicación fiscal de la empresa",
+                          TextInputType.streetAddress,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInput(
+                          passwordController,
+                          "Contraseña",
+                          TextInputType.text,
+                          isPassword: true,
+                          validator: (val) {
+                            if (val == null || val.isEmpty)
+                              return 'Campo obligatorio';
+                            return val.length < 6
+                                ? 'Mínimo 6 caracteres'
+                                : null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInput(
+                          confirmPasswordController,
+                          "Confirmar contraseña",
+                          TextInputType.text,
+                          isPassword: true,
+                        ),
                         const SizedBox(height: 24),
                         isLoading
                             ? const CircularProgressIndicator(
-                                color: Colors.purpleAccent,
+                                color: Colors.deepPurpleAccent,
                               )
-                            : ElevatedButton(
-                                onPressed: _submitForm,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF7A3DA3),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 48,
-                                    vertical: 16,
+                            : SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _submitForm,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.deepPurpleAccent,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                                  child: const Text(
+                                    "Registrar empresa",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                  elevation: 8,
-                                ),
-                                child: const Text(
-                                  "Registrar",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ), // Color fijo
                                 ),
                               ),
                         const SizedBox(height: 12),
-                        // 🔙 Botón para volver al login
                         TextButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () => context.go('/login'),
                           child: const Text(
                             "¿Ya tienes una cuenta? Inicia sesión",
                             style: TextStyle(
-                              color: Colors.white70,
+                              color: Colors.white60,
                               decoration: TextDecoration.underline,
                             ),
                           ),
@@ -224,21 +338,23 @@ class _RegisterPageState extends State<RegisterPage>
     String label,
     TextInputType type, {
     bool isPassword = false,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: isPassword,
       keyboardType: type,
       style: const TextStyle(color: Colors.white),
-      validator: (val) =>
-          val == null || val.isEmpty ? 'Campo obligatorio' : null,
+      validator:
+          validator ??
+          (val) => val == null || val.isEmpty ? 'Campo obligatorio' : null,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white70),
         filled: true,
         fillColor: Colors.white10,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
       ),
