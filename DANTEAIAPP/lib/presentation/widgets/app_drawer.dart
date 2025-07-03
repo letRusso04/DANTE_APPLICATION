@@ -59,6 +59,19 @@ class AppDrawer extends StatelessWidget {
             },
           ),
           ListTile(
+            leading: const Icon(
+              Icons.production_quantity_limits_outlined,
+              color: Colors.white,
+            ),
+            title: const Text(
+              'Productos',
+              style: TextStyle(color: Colors.white),
+            ),
+            onTap: () {
+              context.go('/producto');
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.account_box, color: Colors.white),
             title: const Text(
               'Usuarios',

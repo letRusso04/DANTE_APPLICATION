@@ -1,11 +1,27 @@
+import 'package:danteai/providers/product_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class TopProducts extends StatelessWidget {
   const TopProducts({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final products = List.generate(4, (i) => "Producto #${101 + i}");
+    final productsProvider = Provider.of<ProductsProvider>(context);
+
+    // Mostrar loading mientras carga
+    if (productsProvider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final products = productsProvider.products.take(4).toList();
+
+    if (products.isEmpty) {
+      return const Text(
+        "No hay productos disponibles",
+        style: TextStyle(color: Colors.white),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -27,22 +43,20 @@ class TopProducts extends StatelessWidget {
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
-            children: products
-                .map(
-                  (prod) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.star, color: Colors.amber),
-                    title: Text(
-                      prod,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    subtitle: const Text(
-                      'Ventas simuladas',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  ),
-                )
-                .toList(),
+            children: products.map((prod) {
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.star, color: Colors.amber),
+                title: Text(
+                  prod.name,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  'Stock: ${prod.stock} und | Precio: ${prod.price} dolares',
+                  style: TextStyle(color: Colors.white54),
+                ),
+              );
+            }).toList(),
           ),
         ),
       ],

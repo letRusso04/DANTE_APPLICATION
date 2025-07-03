@@ -1,15 +1,32 @@
+import 'package:danteai/providers/client_provider.dart';
+import 'package:danteai/providers/product_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+// Importa tus otros providers cuando los tengas
 
 class SummaryCards extends StatelessWidget {
   const SummaryCards({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final clientsCount = context.watch<ClientsProvider>().clients.length;
+    final productsCount = context.watch<ProductsProvider>().products.length;
+    // placeholder, cambia por: context.watch<InventoryProvider>().items.length;
+
     final cards = [
-      _buildCard("Clientes", "235", Icons.people, Colors.purpleAccent),
-      _buildCard("Productos", "132", Icons.shopping_bag, Colors.deepPurple),
-      _buildCard("Ventas", "48", Icons.bar_chart, Colors.pinkAccent),
-      _buildCard("Inventario", "839", Icons.inventory, Colors.indigoAccent),
+      _buildCard(
+        "Clientes",
+        clientsCount.toString(),
+        Icons.people,
+        Colors.purpleAccent,
+      ),
+      _buildCard(
+        "Productos",
+        productsCount.toString(),
+        Icons.shopping_bag,
+        Colors.deepPurple,
+      ),
     ];
 
     return Wrap(spacing: 16, runSpacing: 16, children: cards);

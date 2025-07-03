@@ -1,11 +1,26 @@
+import 'package:danteai/providers/client_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class LatestClients extends StatelessWidget {
   const LatestClients({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final clients = List.generate(4, (i) => "Cliente #${234 + i}");
+    final clientsProvider = Provider.of<ClientsProvider>(context);
+
+    if (clientsProvider.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final clients = clientsProvider.clients.take(4).toList();
+
+    if (clients.isEmpty) {
+      return const Text(
+        "No hay clientes disponibles",
+        style: TextStyle(color: Colors.white),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -27,25 +42,20 @@ class LatestClients extends StatelessWidget {
           ),
           padding: const EdgeInsets.all(16),
           child: Column(
-            children: clients
-                .map(
-                  (client) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(
-                      Icons.person,
-                      color: Colors.purpleAccent,
-                    ),
-                    title: Text(
-                      client,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    subtitle: const Text(
-                      'Dirección simulada',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  ),
-                )
-                .toList(),
+            children: clients.map((client) {
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.person, color: Colors.purpleAccent),
+                title: Text(
+                  client.name,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  client.address ?? 'Dirección no disponible',
+                  style: const TextStyle(color: Colors.white54),
+                ),
+              );
+            }).toList(),
           ),
         ),
       ],
