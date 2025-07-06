@@ -6,7 +6,7 @@ class Client(db.Model):
 
     id = db.Column(db.String(36), primary_key=True)
     company_id = db.Column(db.String(36), db.ForeignKey('companies.id_company'), nullable=False)
-
+    category_id = db.Column(db.String(36), db.ForeignKey('categories.id_category'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     phone = db.Column(db.String(20))
@@ -23,6 +23,7 @@ class Client(db.Model):
 
     # Relaciones
     company = db.relationship('Company', backref=db.backref('clients', lazy=True))
+    category = db.relationship('Category', backref=db.backref('clients', lazy=True))
 
 
 

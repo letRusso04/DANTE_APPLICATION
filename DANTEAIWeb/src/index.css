@@ -7,3 +7,14 @@ body{
     margin: 0px;
     padding: 0px;
 }
+
+body.hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+  overflow-y: scroll; /* para mantener el scroll activo */
+}
+body.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari y Opera */
+}
+
+body::-webkit-scrollbar { display: none; }

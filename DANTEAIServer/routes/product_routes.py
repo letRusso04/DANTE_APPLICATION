@@ -20,7 +20,7 @@ def create_product():
     category_id = request.form.get('category_id')
     company_id = request.form.get('company_id')
     image_file = request.files.get('image')
-
+    print(f"{name} - {price} - {stock} - {category_id} {company_id}")
     if not all([name, price, stock, category_id, company_id]):
         return jsonify({"message": "Faltan campos requeridos"}), 400
 
@@ -50,12 +50,21 @@ def create_product():
         db.session.rollback()
         return jsonify({"message": "Error al crear producto", "error": str(e)}), 500
     
+@app.route('/api/product/<string:id>', methods=['GET'])
+def get_product(id):
+    product = Product.query.filter_by(id_product=id).first()
+    if not product:
+        return jsonify({"message": "Producto no encontrado"}), 404
+    return product_schema.jsonify(product)
 
 @app.route('/api/products', methods=['GET'])
 def get_products():
     company_id = request.args.get('company_id')
+    category_id = request.args.get('category_id')
     if company_id:
         products = Product.query.filter_by(company_id=company_id).order_by(Product.created_at.desc()).all()
+    elif category_id:
+        products = Product.query.filter_by(category_id=category_id).order_by(Product.created_at.desc()).all()
     else:
         products = Product.query.order_by(Product.created_at.desc()).all()
     return products_schema.jsonify(products), 200
@@ -119,3 +128,14 @@ def delete_product(id):
         db.session.rollback()
         return jsonify({"message": "Error al eliminar", "error": str(e)}), 500    
 
+@app.route('/api/products/top', methods=['GET'])
+def get_top_products():
+    company_id = request.args.get('company_id')
+    query = Product.query.filter_by(is_active=True)
+    if company_id:
+        query = query.filter_by(company_id=company_id)
+
+    # Por ejemplo, los 10 últimos productos activos
+    top_products = query.order_by(Product.created_at.desc()).limit(10).all()
+
+    return products_schema.jsonify(top_products), 200

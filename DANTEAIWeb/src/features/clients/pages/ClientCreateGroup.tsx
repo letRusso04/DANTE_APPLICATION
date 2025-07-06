@@ -1,24 +1,26 @@
 import React, { useState, type ChangeEvent } from 'react';
-import styled from 'styled-components';
-import { FaArrowLeft, FaComments, FaLifeRing, FaUpload, FaUsers } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import styled from 'styled-components';
+import { FaArrowLeft, FaUpload, FaUsers, FaComments } from 'react-icons/fa';
+import { motion } from 'framer-motion';
+import { useCategoryStore } from '../../../stores/categoryStore';
+import { useCompanyStore } from '../../../stores/companyStore';
 
 const colors = {
-  fondo: '#0D0D11',
+  fondo: '#0E0E11',
   panel: '#1A1A1F',
-  texto: '#E8E8E8',
-  secundario: '#888',
-  acento: '#6B2233',
-  sidebar: '#111117',
+  texto: '#ECECEC',
+  secundario: '#999',
+  acento: '#71263D',
+  sidebar: '#121217',
   header: '#1F1F23',
-  morado: '#6A0DAD',
-  vinotinto: '#8B1E3F',
+  hover: '#8B2E4C',
 };
 
 const Layout = styled.div`
   display: flex;
   height: 100vh;
-  font-family: 'Montserrat', sans-serif;
+  font-family: 'Poppins', sans-serif;
   background-color: ${colors.fondo};
 `;
 
@@ -29,12 +31,10 @@ const Drawer = styled.nav<{ expanded: boolean }>`
   flex-direction: column;
   padding: 1.8rem 1rem;
   gap: 1.5rem;
-  transition: width 0.25s ease;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.6);
-  user-select: none;
+  transition: width 0.3s ease;
 `;
 
-const DrawerItem = styled.div<{ active?: boolean }>`
+const DrawerItem = styled(motion.div)<{ active?: boolean }>`
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -44,7 +44,7 @@ const DrawerItem = styled.div<{ active?: boolean }>`
   border-radius: 0.6rem;
   color: ${({ active }) => (active ? colors.acento : colors.texto)};
   background-color: ${({ active }) => (active ? colors.panel : 'transparent')};
-  transition: background-color 0.25s, color 0.25s;
+  transition: background-color 0.3s, color 0.3s;
 
   &:hover {
     background-color: ${colors.panel};
@@ -52,7 +52,7 @@ const DrawerItem = styled.div<{ active?: boolean }>`
   }
 
   svg {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     min-width: 24px;
   }
 `;
@@ -65,15 +65,13 @@ const Main = styled.main`
 
 const Header = styled.header`
   background-color: ${colors.header};
-  padding: 1.2rem 2rem;
+  padding: 1.4rem 2rem;
   color: ${colors.texto};
   font-weight: 600;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   display: flex;
   align-items: center;
   gap: 1.2rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-  user-select: none;
 `;
 
 const BackButton = styled.button`
@@ -82,274 +80,246 @@ const BackButton = styled.button`
   color: ${colors.acento};
   font-size: 1.5rem;
   cursor: pointer;
-  padding: 0;
   display: flex;
   align-items: center;
-
-  &:hover {
-    color: #8e2a42;
-  }
 `;
 
 const Content = styled.section`
   flex: 1;
   padding: 2rem 3rem;
-  overflow-y: auto;
   color: ${colors.texto};
-  max-width: 600px;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  align-items: center;
 `;
 
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 1.8rem;
-  background: ${colors.panel};
-  padding: 2rem;
-  border-radius: 1rem;
-  box-shadow: 0 8px 16px rgba(107, 34, 51, 0.25);
-  transition: box-shadow 0.3s ease;
+  gap: 2rem;
+  width: 100%;
+  max-width: 600px;
+`;
 
-  &:hover {
-    box-shadow: 0 12px 22px rgba(107, 34, 51, 0.45);
-  }
+const FormGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
 `;
 
 const Label = styled.label`
-  font-weight: 700;
+  font-weight: 600;
   font-size: 1.05rem;
-  margin-bottom: 0.5rem;
-  user-select: none;
 `;
 
 const Input = styled.input`
-  padding: 0.85rem 1.2rem;
-  font-size: 1.05rem;
-  border-radius: 0.75rem;
-  border: none;
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  border-radius: 0.6rem;
+  border: 1px solid ${colors.panel};
   background-color: ${colors.fondo};
   color: ${colors.texto};
-  box-shadow: inset 2px 2px 6px #000000cc;
-  transition: box-shadow 0.3s ease;
+  transition: border 0.3s;
 
   &:focus {
     outline: none;
-    box-shadow: 0 0 10px ${colors.acento};
+    border-color: ${colors.acento};
   }
 `;
 
-const Button = styled.button<{ disabled?: boolean }>`
-  background-color: ${({ disabled }) => (disabled ? '#5a1a28' : colors.acento)};
+const TextArea = styled.textarea`
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  border-radius: 0.6rem;
+  border: 1px solid ${colors.panel};
+  background-color: ${colors.fondo};
+  color: ${colors.texto};
+  resize: vertical;
+
+  &:focus {
+    outline: none;
+    border-color: ${colors.acento};
+  }
+`;
+
+const ImagePreview = styled.div<{ src?: string }>`
+  width: 140px;
+  height: 140px;
+  border-radius: 0.75rem;
+  background-color: ${colors.fondo};
+  background-image: ${({ src }) => (src ? `url(${src})` : 'none')};
+  background-size: cover;
+  background-position: center;
+  border: 1px solid ${colors.panel};
+`;
+
+const UploadLabel = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: ${colors.acento};
+`;
+
+const HiddenInput = styled.input`
+  display: none;
+`;
+
+const Button = styled.button`
+  background-color: ${colors.acento};
   border: none;
   color: white;
-  font-weight: 700;
-  padding: 1rem 1.2rem;
-  border-radius: 0.85rem;
-  font-size: 1.15rem;
-  cursor: ${({ disabled }) => (disabled ? 'not-allowed' : 'pointer')};
-  transition: background-color 0.3s ease;
+  font-weight: 600;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
 
   &:hover {
-    background-color: ${({ disabled }) => (disabled ? '#5a1a28' : '#8e2a42')};
+    background-color: ${colors.hover};
   }
 `;
 
 const Message = styled.p<{ error?: boolean }>`
   color: ${({ error }) => (error ? '#e03e3e' : '#4caf50')};
   font-weight: 600;
-  font-size: 1rem;
-  margin-top: -1rem;
-  user-select: none;
+  font-size: 0.95rem;
 `;
 
-const ImageUploader = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-`;
-
-const ImagePreview = styled.div`
-  width: 140px;
-  height: 140px;
-  border-radius: 0.75rem;
-  background-color: ${colors.fondo};
-  box-shadow: inset 0 0 8px #000000bb;
-  background-size: cover;
-  background-position: center;
-  user-select: none;
-`;
-
-const HiddenFileInput = styled.input`
-  display: none;
-`;
-
-const UploadButton = styled.label`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 1rem;
-  color: ${colors.acento};
-  padding: 0.4rem 0.8rem;
-  border-radius: 0.7rem;
-  background-color: ${colors.panel};
-  box-shadow: 0 2px 8px rgba(107, 34, 51, 0.3);
-  transition: background-color 0.3s ease;
-
-  &:hover {
-    background-color: #8e2a42;
-    color: white;
-  }
-
-  svg {
-    font-size: 1.2rem;
-  }
-`;
-
-const CreateGroup: React.FC = () => {
+const CreateCategoryGroup: React.FC = () => {
   const [drawerExpanded, setDrawerExpanded] = useState(false);
-  const [groupName, setGroupName] = useState('');
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [name, setName] = useState('');
+  const [desc, setDesc] = useState('');
+  const [image, setImage] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
   const navigate = useNavigate();
+  const { addCategory } = useCategoryStore();
+  const { company } = useCompanyStore();
 
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setError('');
-    setSuccess('');
-    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    const file = e.target.files[0];
     const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-
     if (!validTypes.includes(file.type)) {
-      setError('Formato no válido. Solo JPG, PNG o WEBP permitidos.');
-      setImageFile(null);
-      setImagePreview(null);
+      setError('Formato inválido. Usa JPG, PNG o WEBP.');
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setError('El tamaño máximo permitido es 2MB.');
-      setImageFile(null);
-      setImagePreview(null);
+      setError('Tamaño máximo: 2MB.');
       return;
     }
 
-    setImageFile(file);
-
+    setImage(file);
     const reader = new FileReader();
-    reader.onload = () => {
-      setImagePreview(reader.result as string);
-    };
+    reader.onload = () => setPreview(reader.result as string);
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    if (!groupName.trim()) {
-      setError('El nombre del grupo es obligatorio.');
-      return;
+    if (!name.trim()) return setError('Nombre obligatorio.');
+    if (!company?.id_company) return setError('Sesión inválida.');
+
+    const formData = new FormData();
+    formData.append('name', name.trim());
+    formData.append('description', desc.trim() || name.trim());
+    formData.append('company_id', company.id_company);
+    formData.append('typeon', '2');
+    if (image) formData.append('image', image);
+    try {
+      await addCategory(formData as any);
+      setSuccess(`Grupo "${name}" creado correctamente.`);
+      setName('');
+      setDesc('');
+      setImage(null);
+      setPreview(null);
+    } catch {
+      setError('Error al crear el grupo.');
     }
-    // Aquí va la lógica para subir imagen y guardar grupo, simulamos éxito:
-    setSuccess(`Grupo "${groupName}" creado exitosamente.`);
-    setGroupName('');
-    setImageFile(null);
-    setImagePreview(null);
   };
 
   return (
     <Layout>
-   <Drawer
-  expanded={drawerExpanded}
-  onMouseEnter={() => setDrawerExpanded(true)}
-  onMouseLeave={() => setDrawerExpanded(false)}
->
-  <DrawerItem onClick={() => navigate('/dashboard')} title="Dashboard Principal" active={false}>
-    <FaUsers />
-    {drawerExpanded && 'Dashboard'}
-  </DrawerItem>
-
-  <DrawerItem onClick={() => navigate('/cliente/grupo')} title="Grupos de Clientes" active={location.pathname === '/cliente/grupo'}>
-    {/* Icono de grupo personalizado o de librería */}
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill={drawerExpanded ? colors.acento : colors.texto}
-      viewBox="0 0 24 24"
-      width="24"
-      height="24"
-      style={{ minWidth: 24 }}
-    >
-      <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2 0-6 1-6 3v2h14v-2c0-2-4-3-6-3z" />
-    </svg>
-    {drawerExpanded && 'Grupos'}
-  </DrawerItem>
-
-  <DrawerItem onClick={() => navigate('/cliente/grupo/crear')} title="Crear nuevo grupo" active={location.pathname === '/cliente/grupo/crear'}>
-    <FaComments />
-    {drawerExpanded && 'Crear grupo'}
-  </DrawerItem>
-</Drawer>
+      <Drawer
+        expanded={drawerExpanded}
+        onMouseEnter={() => setDrawerExpanded(true)}
+        onMouseLeave={() => setDrawerExpanded(false)}
+      >
+        <DrawerItem onClick={() => navigate('/dashboard')}>
+          <FaUsers />
+          {drawerExpanded && 'Dashboard'}
+        </DrawerItem>
+        <DrawerItem onClick={() => navigate('/cliente/grupo')}>
+          <FaComments />
+          {drawerExpanded && 'Grupos'}
+        </DrawerItem>
+        <DrawerItem active>
+          <FaComments />
+          {drawerExpanded && 'Crear Grupo'}
+        </DrawerItem>
+      </Drawer>
 
       <Main>
         <Header>
-          <BackButton onClick={() => navigate('/clients/groups')} title="Volver a grupos">
+          <BackButton onClick={() => navigate('/cliente/grupo')}>
             <FaArrowLeft />
           </BackButton>
-          Crear Nuevo Grupo
+          Crear Grupo de Clientes
         </Header>
 
         <Content>
           <Form onSubmit={handleSubmit} noValidate>
-            <div>
-              <Label htmlFor="groupName">Nombre del grupo</Label>
+            <FormGroup>
+              <Label htmlFor="name">Nombre del grupo</Label>
               <Input
-                id="groupName"
+                id="name"
                 type="text"
-                value={groupName}
-                onChange={(e) => setGroupName(e.target.value)}
-                placeholder="Ejemplo: Corporativos, VIP, Retail..."
-                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ej: VIP, Mayoristas..."
               />
-            </div>
+            </FormGroup>
 
-            <ImageUploader>
-              <Label htmlFor="imageUpload">Imagen del grupo (opcional)</Label>
-              {imagePreview ? (
-                <ImagePreview style={{ backgroundImage: `url(${imagePreview})` }} />
-              ) : (
-                <ImagePreview>
-                  <p style={{ color: colors.secundario, textAlign: 'center', paddingTop: '50px', fontSize: '0.9rem' }}>
-                    Vista previa
-                  </p>
-                </ImagePreview>
-              )}
+            <FormGroup>
+              <Label htmlFor="desc">Descripción (opcional)</Label>
+              <TextArea
+                id="desc"
+                rows={3}
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+                placeholder="Breve descripción del grupo"
+              />
+            </FormGroup>
 
-              <HiddenFileInput
+            <FormGroup>
+              <Label>Imagen del grupo</Label>
+              <ImagePreview src={preview || undefined} />
+              <HiddenInput
+                id="image"
                 type="file"
-                id="imageUpload"
-                accept="image/jpeg, image/png, image/webp"
+                accept="image/png,image/jpeg,image/webp"
                 onChange={handleImageChange}
               />
-              <UploadButton htmlFor="imageUpload">
-                <FaUpload />
-                Subir imagen
-              </UploadButton>
-            </ImageUploader>
+              <UploadLabel htmlFor="image">
+                <FaUpload /> Subir imagen
+              </UploadLabel>
+            </FormGroup>
 
             {error && <Message error>{error}</Message>}
             {success && <Message>{success}</Message>}
 
-            <Button type="submit" disabled={!groupName.trim()}>
-              Crear Grupo
-            </Button>
+            <Button type="submit">Crear Grupo</Button>
           </Form>
         </Content>
       </Main>
@@ -357,4 +327,4 @@ const CreateGroup: React.FC = () => {
   );
 };
 
-export default CreateGroup;
+export default CreateCategoryGroup;

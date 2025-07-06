@@ -14,6 +14,7 @@ def create_category():
     description = request.form.get('description', '')
     company_id = request.form.get('company_id')
     image_file = request.files.get('image')
+    typeon = request.form.get('typeon')
 
     if not name or not company_id:
         return jsonify({"message": "Faltan campos obligatorios"}), 400
@@ -41,6 +42,7 @@ def create_category():
             description=description,
             image=filename,
             company_id=company_id,
+            typeon=int(typeon)
         )
         db.session.add(category)
         db.session.commit()
@@ -54,9 +56,10 @@ def create_category():
 @app.route('/api/categories', methods=['GET'])
 def get_categories():
     company_id = request.args.get('company_id')
-    print(company_id)
+    typeon = request.args.get('typeon')
+    
     if company_id:
-        categories = Category.query.filter_by(company_id=company_id).order_by(Category.created_at.desc()).all()
+        categories = Category.query.filter_by(company_id=company_id, typeon=int(typeon)).order_by(Category.created_at.desc()).all()
     else:
         categories = Category.query.order_by(Category.created_at.desc()).all()
 

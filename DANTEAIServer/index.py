@@ -3,6 +3,7 @@ from flask import Flask
 import os
 from app.extensions import db, ma, jwt
 from app.config import Config  # <-- Importamos la clase
+from flask_cors import CORS
 
 app = Flask(__name__)
 
@@ -14,6 +15,7 @@ app.config.from_object(Config)
 db.init_app(app)
 ma.init_app(app)
 jwt.init_app(app)
+CORS(app)  # tras crear la app
 
 # IMPORTACION DE TODOS LOS MODELOS
 from models.model_user import User
@@ -29,7 +31,7 @@ from routes.client_routes import *
 from routes.company_routes import *
 from routes.ticket_routes import *
 from routes.message_routes import *
-from routes.ticket_routes import *
+from routes.user_routes import *
 from routes.product_routes import *
 
 if __name__ == '__main__':

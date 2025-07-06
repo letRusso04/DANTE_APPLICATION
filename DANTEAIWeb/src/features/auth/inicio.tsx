@@ -4,13 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { Rocket, BarChart2, Database, ShieldCheck, Users, Cpu } from 'lucide-react';
 import { motion } from 'framer-motion';
 import astronaut from '../../assets/astronaut.png'
+import star from "../../assets/stardust.png";
+
 const moveStars = keyframes`
   0% { background-position: 0 0; }
   100% { background-position: -1000px 1000px; }
 `;
 
 const Background = styled.div`
-  background: #000 url('https://www.transparenttextures.com/patterns/stardust.png') repeat;
+  background: #000 url('${star}') repeat;
   animation: ${moveStars} 120s linear infinite;
   background-size: cover;
   min-height: 100vh;

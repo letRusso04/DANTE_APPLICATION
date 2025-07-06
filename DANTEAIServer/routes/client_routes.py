@@ -16,6 +16,7 @@ def create_client():
     address = request.form.get('address')
     document_type = request.form.get('document_type')
     document_number = request.form.get('document_number')
+    category_id = request.form.get('category_id')
 
     file = request.files.get('avatar')
     avatar_filename = None
@@ -31,6 +32,7 @@ def create_client():
     client = Client(
         id=str(uuid.uuid4()),
         company_id=company_id,
+        category_id=category_id,
         name=name,
         email=email,
         phone=phone,
@@ -64,21 +66,43 @@ def get_client(id):
         return jsonify({"message": "Cliente no encontrado"}), 404
     return client_schema.jsonify(client), 200
 
-
 @app.route('/api/clients/<id>', methods=['PUT'])
 def update_client(id):
     client = Client.query.get(id)
     if not client:
         return jsonify({"message": "Cliente no encontrado"}), 404
 
-    data = request.get_json()
-    client.name = data.get('name', client.name)
-    client.email = data.get('email', client.email)
-    client.phone = data.get('phone', client.phone)
-    client.address = data.get('address', client.address)
-    client.document_type = data.get('document_type', client.document_type)
-    client.document_number = data.get('document_number', client.document_number)
-    client.is_active = data.get('is_active', client.is_active)
+    # Leer campos desde request.form
+    client.name = request.form.get('name', client.name)
+    client.email = request.form.get('email', client.email)
+    client.phone = request.form.get('phone', client.phone)
+    client.address = request.form.get('address', client.address)
+    client.document_type = request.form.get('document_type', client.document_type)
+    client.document_number = request.form.get('document_number', client.document_number)
+    client.category_id = request.form.get('category_id', client.category_id)
+    client.company_id = request.form.get('company_id', client.company_id)
+
+    # Procesar avatar si viene uno nuevo
+    if 'avatar' in request.files:
+        avatar = request.files['avatar']
+        if avatar.filename != '':
+            from werkzeug.utils import secure_filename
+            import os, uuid
+
+            UPLOAD_FOLDER = os.path.join(app.instance_path, 'uploads', 'avatars')
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+            filename = f"{uuid.uuid4()}_{secure_filename(avatar.filename)}"
+            avatar_path = os.path.join(UPLOAD_FOLDER, filename)
+            avatar.save(avatar_path)
+
+            # Elimina el avatar anterior si existe
+            if client.avatar:
+                old_path = os.path.join(UPLOAD_FOLDER, client.avatar)
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+
+            client.avatar = filename
 
     try:
         db.session.commit()
@@ -86,6 +110,7 @@ def update_client(id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": "Error al actualizar cliente", "error": str(e)}), 500
+
 
 
 @app.route('/api/clients/<id>', methods=['DELETE'])
