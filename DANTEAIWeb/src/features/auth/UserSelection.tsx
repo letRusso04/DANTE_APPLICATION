@@ -1,396 +1,742 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
+import { getUsers, loginUser, createUser } from '../../services/userServices';
+import { useNavigate } from 'react-router-dom';
+import { useCompanyStore } from '../../stores/companyStore';
+import { useUserStore } from '../../stores/userStore';
+import type { UserModel } from '../../models/userModels';
+import { API_AVATAR } from '../../services/routes/routesAPI';
 
-const colors = {
-  fondo: '#121212',
-  panelFondo: '#1F1F23',
-  texto: '#E8E8E8',
-  textoSecundario: '#a0a0a0',
-  acento: '#6B2233',
-  bordeActivo: 'rgba(38, 166, 91, 0.6)',
-  bordeInactivo: 'rgba(230, 57, 70, 0.6)',
-  hoverShadow: 'rgba(107, 34, 51, 0.5)',
-  inputBg: '#24242a',
-  inputTexto: '#ccc',
-  modalBg: 'rgba(0, 0, 0, 0.75)',
-  buttonBg: '#6B2233',
-  buttonHoverBg: '#8E2A42',
-};
+const phonePrefixes = [
+  { code: '+1', country: 'USA/Canada' },
+  { code: '+52', country: 'México' },
+  { code: '+57', country: 'Colombia' },
+  { code: '+58', country: 'Venezuela' },
+  { code: '+54', country: 'Argentina' },
+  { code: '+55', country: 'Brasil' },
+  { code: '+507', country: 'Panamá' },
+  { code: '+56', country: 'Chile' },
+];
 
-const moveStars = keyframes`
-  0% { background-position: 0 0; }
-  100% { background-position: -1000px 1000px; }
-`;
+const UserSelection: React.FC = () => {
+  const navigate = useNavigate();
+  const { company, token: companyToken, logout: logoutCompany } = useCompanyStore();
+  const { setUser, clearUser, user } = useUserStore();
 
-const fadeInUp = keyframes`
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-`;
-
-const Background = styled.div`
-  background: #000 url('https://www.transparenttextures.com/patterns/stardust.png') repeat;
-  animation: ${moveStars} 120s linear infinite;
-  background-size: cover;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  padding: 4rem 1rem;
-`;
-
-const Container = styled.div`
-  width: 100%;
-  max-width: 1024px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: ${colors.texto};
-  font-family: 'Montserrat', sans-serif;
-`;
-
-const Title = styled.h1`
-  font-size: 3rem;
-  margin-bottom: 2rem;
-  color: ${colors.acento};
-  font-weight: 700;
-  user-select: none;
-`;
-
-const SearchInput = styled.input`
-  width: 100%;
-  max-width: 520px;
-  padding: 1rem 1.4rem;
-  font-size: 1.15rem;
-  border-radius: 0.6rem;
-  border: none;
-  background-color: ${colors.inputBg};
-  color: ${colors.inputTexto};
-  margin-bottom: 2.8rem;
-  box-shadow: inset 0 0 8px #000000cc;
-  transition: box-shadow 0.3s ease;
-
-  &::placeholder {
-    color: ${colors.inputTexto};
-    opacity: 0.7;
-  }
-
-  &:focus {
-    outline: none;
-    box-shadow: 0 0 12px ${colors.acento};
-    background-color: #2c2c33;
-  }
-`;
-
-const UsersGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 3.4rem;
-  width: 100%;
-  justify-items: center;
-`;
-
-const UserCard = styled.div<{ disabled?: boolean }>`
-  background: ${colors.panelFondo};
-  border-radius: 1.5rem;
-  padding: 3rem 2rem 3.5rem;
-  cursor: ${({ disabled }) => (disabled ? 'not-allowed' : 'pointer')};
-  text-align: center;
-  box-shadow: 0 0 12px transparent;
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border 0.4s ease;
-  border: 4px double
-    ${({ disabled }) => (disabled ? colors.bordeInactivo : colors.bordeActivo)};
-  animation: ${fadeInUp} 0.45s ease forwards;
-  user-select: none;
-  width: 200px;
-  &:hover {
-    ${({ disabled }) =>
-      !disabled &&
-      `
-      transform: scale(1.12);
-      box-shadow: 0 14px 40px ${colors.hoverShadow};
-      border-color: ${colors.acento};
-    `}
-  }
-`;
-
-const Avatar = styled.div<{ image?: string }>`
-  width: 130px;
-  height: 130px;
-  margin: 0 auto 1.8rem;
-  border-radius: 50%;
-  background-color: #4a4a57;
-  background-image: ${({ image }) => (image ? `url(${image})` : 'none')};
-  background-size: cover;
-  background-position: center;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.9);
-`;
-
-const UserName = styled.p`
-  font-weight: 700;
-  font-size: 1.5rem;
-  color: ${colors.texto};
-  margin-bottom: 0.35rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-const UserRole = styled.p`
-  font-weight: 500;
-  font-size: 1.05rem;
-  color: ${colors.textoSecundario};
-  user-select: none;
-`;
-
-const AddUserCard = styled(UserCard)`
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  color: ${colors.acento};
-  font-size: 5rem;
-  font-weight: 900;
-  user-select: none;
-  border-color: ${colors.acento};
-
-  &:hover {
-    color: #9a3145;
-    border-color: #9a3145;
-  }
-`;
-
-// Modal styles
-const ModalOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: ${colors.modalBg};
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 999;
-`;
-
-const ModalContent = styled.div`
-  background: ${colors.panelFondo};
-  border-radius: 1.5rem;
-  padding: 3rem 3.5rem;
-  width: 380px;
-  max-width: 90vw;
-  box-shadow: 0 0 25px rgba(0, 255, 255, 0.15);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  animation: ${fadeInUp} 0.4s ease forwards;
-`;
-
-const ModalAvatar = styled(Avatar)`
-  width: 160px;
-  height: 160px;
-  margin-bottom: 2rem;
-`;
-
-const ModalUserName = styled(UserName)`
-  font-size: 2rem;
-  margin-bottom: 0.25rem;
-`;
-
-const ModalUserRole = styled(UserRole)`
-  font-size: 1.2rem;
-  margin-bottom: 1.8rem;
-`;
-
-const PasswordInput = styled.input`
-  width: 100%;
-  padding: 0.9rem 1.2rem;
-  border-radius: 0.65rem;
-  border: none;
-  background-color: ${colors.inputBg};
-  color: ${colors.inputTexto};
-  font-size: 1rem;
-  margin-bottom: 2rem;
-  box-shadow: inset 0 0 7px #000000bb;
-
-  &::placeholder {
-    color: ${colors.inputTexto};
-    opacity: 0.7;
-  }
-
-  &:focus {
-    outline: none;
-    box-shadow: 0 0 10px ${colors.acento};
-    background-color: #2c2c33;
-  }
-`;
-
-const ModalButton = styled.button`
-  width: 100%;
-  padding: 1.1rem 0;
-  background-color: ${colors.buttonBg};
-  border: none;
-  border-radius: 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #000;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-
-  &:hover {
-    background-color: ${colors.buttonHoverBg};
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
-
-interface User {
-  id: string;
-  name: string;
-  avatar?: string;
-  disabled?: boolean;
-  role?: 'Administrador' | 'Usuario';
-}
-
-interface UserSelectionProps {
-  users: User[];
-  onSelect: (id: string, password: string) => void;
-  onAddUser: () => void;
-}
-
-const UserSelection: React.FC<UserSelectionProps> = ({ users, onSelect, onAddUser }) => {
+  // Cambiar tipo a UserModel[]
+  const [users, setUsers] = useState<UserModel[]>([]);
   const [search, setSearch] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
+
+  // selectedUser como UserModel | null
+  const [selectedUser, setSelectedUser] = useState<UserModel | null>(null);
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState('');
+  const [loadingLogin, setLoadingLogin] = useState(false);
+
+  // Estados para crear usuario modal
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newAvatarFile, setNewAvatarFile] = useState<File | null>(null);
+  const [newAvatarPreview, setNewAvatarPreview] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPhonePrefix, setNewPhonePrefix] = useState(phonePrefixes[0].code);
+  const [newPhone, setNewPhone] = useState('');
+  const [newJobTitle, setNewJobTitle] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newGender, setNewGender] = useState('');
+  const [newBirthDate, setNewBirthDate] = useState('');
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!company || !companyToken) {
+      navigate('/');
+    }
+  }, [company, companyToken, navigate]);
+
+  useEffect(() => {
+    if (!company) return;
+
+    const fetchUsers = async () => {
+      setLoadingUsers(true);
+      setUsersError(null);
+      try {
+        const res = await getUsers();
+        if (res.success) {
+          // Si res.users puede ser undefined, protegemos
+          setUsers(res.users ?? []);
+        } else {
+          setUsersError(res.error || 'Error cargando usuarios');
+          setUsers([]);
+        }
+      } catch {
+        setUsersError('Error inesperado cargando usuarios');
+        setUsers([]);
+      }
+      setLoadingUsers(false);
+    };
+
+    fetchUsers();
+  }, [company]);
 
   const filteredUsers = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return users;
-    return users.filter((u) => u.name.toLowerCase().includes(term));
+    return users.filter(u => u.name.toLowerCase().includes(term));
   }, [search, users]);
 
-  const openModal = (user: User) => {
-    if (user.disabled) return;
+  const openLoginModal = (user: UserModel) => {
+    if (user.is_active === false) return; // usar is_active para deshabilitar
     setSelectedUser(user);
     setPassword('');
-    setError(null);
+    setLoginError('');
   };
 
-  const closeModal = () => {
+  const closeLoginModal = () => {
     setSelectedUser(null);
     setPassword('');
-    setError(null);
-    setLoading(false);
+    setLoginError('');
+    setLoadingLogin(false);
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!password) {
-      setError('Por favor ingresa la contraseña.');
+      setLoginError('Por favor ingresa la contraseña.');
       return;
     }
-    setError(null);
-    setLoading(true);
+    if (!selectedUser) {
+      setLoginError('No hay usuario seleccionado.');
+      return;
+    }
+    setLoginError('');
+    setLoadingLogin(true);
 
-    // Simula validación (aquí pones tu lógica real)
-    setTimeout(() => {
-      setLoading(false);
-      // Ejemplo: password == '1234' para permitir login
-      if (password === '1234') {
-        onSelect(selectedUser!.id, password);
-        closeModal();
+    try {
+      const res = await loginUser(selectedUser.email, password);
+      if (res.success) {
+        setUser(selectedUser);
+        closeLoginModal();
+        navigate('/dashboard');
       } else {
-        setError('Contraseña incorrecta.');
+        setLoginError(res.error || 'Credenciales inválidas.');
       }
-    }, 1200);
+    } catch {
+      setLoginError('Error inesperado al iniciar sesión.');
+    } finally {
+      setLoadingLogin(false);
+    }
   };
 
+  const onAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setNewAvatarFile(file);
+      setNewAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const resetCreateForm = () => {
+    setNewAvatarFile(null);
+    setNewAvatarPreview(null);
+    setNewName('');
+    setNewEmail('');
+    setNewPhonePrefix(phonePrefixes[0].code);
+    setNewPhone('');
+    setNewJobTitle('');
+    setNewPassword('');
+    setNewGender('');
+    setNewBirthDate('');
+    setCreateError(null);
+  };
+
+  const isValidEmail = (email: string) => /\S+@\S+\.\S+/.test(email);
+
+  const handleCreateUser = async () => {
+    if (!newName.trim()) {
+      setCreateError('El nombre es obligatorio');
+      return;
+    }
+    if (!isValidEmail(newEmail)) {
+      setCreateError('Correo inválido');
+      return;
+    }
+    if (!newPassword || newPassword.length < 4) {
+      setCreateError('La contraseña debe tener al menos 4 caracteres');
+      return;
+    }
+    if (!newGender) {
+      setCreateError('Selecciona un sexo');
+      return;
+    }
+    if (!newBirthDate) {
+      setCreateError('Selecciona fecha de nacimiento');
+      return;
+    }
+
+    setCreateError(null);
+    setCreatingUser(true);
+
+    try {
+      const res = await createUser({
+        company_id: company!.id_company,
+        avatarFile: newAvatarFile,
+        name: newName.trim(),
+        email: newEmail.trim(),
+        phone: newPhonePrefix + newPhone.trim(),
+        job_title: newJobTitle.trim(),
+        password: newPassword,
+        gender: newGender,
+        birth_date: newBirthDate,
+      });
+
+      if (res.success) {
+        setUsers(prev => [...prev, res.user]);
+        setShowAddModal(false);
+        resetCreateForm();
+      } else {
+        setCreateError(res.error || 'Error al crear usuario');
+      }
+    } catch {
+      setCreateError('Error inesperado al crear usuario');
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
+  const handleLogout = () => {
+    clearUser();
+    logoutCompany();
+    navigate('/');
+  };
+
+
   return (
-    <Background>
-      <Container>
-        <Title>Selecciona tu usuario</Title>
+    <div style={{ background: '#000', color: '#eee', minHeight: '100vh', padding: '2rem', fontFamily: 'sans-serif' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h1 style={{ color: '#6B2233' }}>Selecciona tu usuario</h1>
+        <button
+          onClick={handleLogout}
+          style={{
+            background: '#6B2233',
+            color: '#000',
+            padding: '0.5rem 1rem',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+          }}
+        >
+          Desconectar
+        </button>
+      </header>
 
-        <SearchInput
-          type="search"
-          placeholder="Buscar usuario..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Buscar usuario"
-          spellCheck={false}
-          autoComplete="off"
-        />
+      <input
+        type="search"
+        placeholder="Buscar usuario..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        aria-label="Buscar usuario"
+        spellCheck={false}
+        autoComplete="off"
+        style={{
+          width: '100%',
+          maxWidth: 520,
+          padding: '1rem',
+          fontSize: '1.1rem',
+          borderRadius: 8,
+          border: 'none',
+          backgroundColor: '#24242a',
+          color: '#ccc',
+          marginBottom: '2rem',
+        }}
+      />
 
-        <UsersGrid>
-          {filteredUsers.map((user) => (
-            <UserCard
-              key={user.id}
-              onClick={() => openModal(user)}
-              title={user.disabled ? 'Usuario deshabilitado' : `Entrar como ${user.name}`}
-              disabled={user.disabled}
-              tabIndex={user.disabled ? -1 : 0}
-              role="button"
-              aria-disabled={user.disabled}
-            >
-              <Avatar image={user.avatar} />
-              <UserName>{user.name}</UserName>
-              <UserRole>{user.role || 'Usuario'}</UserRole>
-            </UserCard>
-          ))}
+      {loadingUsers && <p>Cargando usuarios...</p>}
+      {usersError && <p style={{ color: 'red' }}>{usersError}</p>}
 
-          <AddUserCard
-            onClick={onAddUser}
-            title="Agregar nuevo usuario"
-            tabIndex={0}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '2rem',
+          
+          maxHeight: '60vh',
+          overflowY: 'auto',
+          paddingRight: 10,
+        }}
+      >
+        {filteredUsers.map(user => (
+          <div
+            key={user.id_user}
+            onClick={() => openLoginModal(user)}
             role="button"
+            
+            tabIndex={user.is_active === false ? -1 : 0}
+            aria-disabled={user.is_active === false}
+            title={user.is_active === false ? 'Usuario deshabilitado' : `Entrar como ${user.name}`}
+            style={{
+              background: '#1F1F23',
+              borderRadius: 24,
+              padding: '2rem',
+        
+              textAlign: 'center',
+              cursor: user.is_active === false ? 'not-allowed' : 'pointer',
+              border: `4px double ${user.is_active === false ? 'rgba(230, 57, 70, 0.6)' : 'rgba(38, 166, 91, 0.6)'}`,
+              userSelect: 'none',
+              transition: 'transform 0.3s ease',
+            }}
+          >
+            <div
+              style={{
+                width: 130,
+                height: 130,
+                margin: '0 auto 1.5rem',
+                borderRadius: '50%',
+                backgroundColor: '#4a4a57',
+                backgroundImage: user.avatar_url ? `url(${API_AVATAR}${user.avatar_url})` : 'none',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+            />
+            <p
+              style={{
+                fontWeight: 700,
+                fontSize: '1.4rem',
+                marginBottom: 4,
+                color: '#eee',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {user.name}
+            </p>
+            <p style={{ fontWeight: 500, fontSize: '1rem', color: '#a0a0a0', userSelect: 'none' }}>
+              {user.role || 'Usuario'}
+            </p>
+          </div>
+        ))}
+
+        {users.length === 0 && (
+          <div
+            onClick={() => setShowAddModal(true)}
+            role="button"
+            tabIndex={0}
             aria-label="Agregar nuevo usuario"
+            title="Agregar nuevo usuario"
+            style={{
+              background: '#1F1F23',
+              width: '180px',
+              borderRadius: 24,
+              padding: '2rem',
+              textAlign: 'center',
+              cursor: 'pointer',
+              border: '4px double #6B2233',
+              color: '#6B2233',
+              fontSize: '4rem',
+              fontWeight: 900,
+              userSelect: 'none',
+            }}
           >
             +
-          </AddUserCard>
-        </UsersGrid>
+          </div>
+        )}
+      </div>
 
-        {selectedUser && (
-          <ModalOverlay
-            onClick={(e) => {
-              if (e.target === e.currentTarget) closeModal();
+      {/* Modal login */}
+      {selectedUser && (
+        <div
+          onClick={e => {
+            if (e.target === e.currentTarget) closeLoginModal();
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '2rem',
+            zIndex: 9999,
+            overflowY: 'auto',
+          }}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #1a1a24, #2e2e3a)',
+              borderRadius: 24,
+              padding: '2rem 3rem',
+              maxWidth: 480,
+              width: '100%',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              color: '#eee',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
             }}
-            aria-modal="true"
-            role="dialog"
-            aria-labelledby="modal-title"
           >
-            <ModalContent>
-              <ModalAvatar image={selectedUser.avatar} />
-              <ModalUserName id="modal-title">{selectedUser.name}</ModalUserName>
-              <ModalUserRole>{selectedUser.role || 'Usuario'}</ModalUserRole>
-              <PasswordInput
-                type="password"
-                placeholder="Contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoFocus
-                aria-label="Contraseña"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleLogin();
+            <div
+              style={{
+                width: 160,
+                height: 160,
+                borderRadius: '50%',
+                backgroundColor: '#4a4a57',
+                backgroundImage: selectedUser.avatar_url ? `url(${API_AVATAR}${selectedUser.avatar_url})` : 'none',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                marginBottom: '1.5rem',
+              }}
+            />
+            <h2 id="modal-title" style={{ marginBottom: 8, color: '#6B2233' }}>
+              {selectedUser.name}
+            </h2>
+            <p style={{ marginBottom: '1.5rem', fontSize: '1.1rem', color: '#a0a0a0' }}>
+              {selectedUser.role || 'Usuario'}
+            </p>
+            <input
+              type="password"
+              placeholder="Contraseña"
+              aria-label="Contraseña"
+              autoFocus
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleLogin()}
+              style={{
+                padding: '1rem',
+                borderRadius: 10,
+                border: 'none',
+                backgroundColor: '#24242a',
+                color: '#ccc',
+                marginBottom: 16,
+                width: '100%',
+                fontSize: '1rem',
+              }}
+            />
+            {loginError && (
+              <p
+                style={{
+                  color: 'rgba(230, 57, 70, 0.8)',
+                  marginBottom: '1rem',
+                  fontWeight: '600',
+                  textAlign: 'center',
+                }}
+              >
+                {loginError}
+              </p>
+            )}
+            <button
+              onClick={handleLogin}
+              disabled={loadingLogin}
+              style={{
+                width: '100%',
+                padding: '1rem',
+                backgroundColor: '#6B2233',
+                border: 'none',
+                borderRadius: 12,
+                fontWeight: '700',
+                fontSize: '1.1rem',
+                cursor: loadingLogin ? 'not-allowed' : 'pointer',
+                color: '#000',
+              }}
+            >
+              {loadingLogin ? 'Iniciando...' : 'Iniciar sesión'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal crear usuario */}
+      {showAddModal && (
+        <div
+          onClick={e => {
+            if (e.target === e.currentTarget) {
+              setShowAddModal(false);
+              resetCreateForm();
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-user-modal-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '2rem',
+            zIndex: 9999,
+            overflowY: 'auto',
+          }}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #1a1a24, #2e2e3a)',
+              borderRadius: 24,
+              padding: '2rem 3rem',
+              maxWidth: '50vw',
+              width: '100%',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              color: '#eee',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
+            <h2
+              id="add-user-modal-title"
+              style={{ marginBottom: '1.5rem', color: '#6B2233', textAlign: 'center' }}
+            >
+              Agregar nuevo usuario
+            </h2>
+
+            <label
+              htmlFor="avatarFile"
+              style={{ marginBottom: '1rem', cursor: 'pointer', display: 'block', textAlign: 'center' }}
+              title="Seleccionar avatar"
+            >
+              <div
+                style={{
+                  width: 160,
+                  height: 160,
+                  borderRadius: '50%',
+                  backgroundColor: '#4a4a57',
+                  backgroundImage: newAvatarPreview ? `url(${newAvatarPreview})` : 'none',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  margin: '0 auto 0.5rem',
                 }}
               />
-              {error && (
-                <p
-                  style={{
-                    color: colors.bordeInactivo,
-                    marginBottom: '1rem',
-                    fontWeight: '600',
-                    textAlign: 'center',
-                  }}
-                >
-                  {error}
-                </p>
-              )}
-              <ModalButton onClick={handleLogin} disabled={loading}>
-                {loading ? 'Iniciando...' : 'Iniciar sesión'}
-              </ModalButton>
-            </ModalContent>
-          </ModalOverlay>
-        )}
-      </Container>
-    </Background>
+              <input
+                id="avatarFile"
+                type="file"
+                accept="image/*"
+                onChange={onAvatarChange}
+                style={{ display: 'none' }}
+                aria-label="Seleccionar avatar"
+              />
+              <small style={{ color: '#a0a0a0' }}>Haz clic en el avatar para seleccionar imagen</small>
+            </label>
+
+            <label>
+              Nombre completo
+              <input
+                type="text"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                placeholder="Ejemplo: Juan Pérez"
+                autoComplete="name"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  marginBottom: '1rem',
+                  borderRadius: 8,
+                  border: 'none',
+                  backgroundColor: '#24242a',
+                  color: '#ccc',
+                }}
+              />
+            </label>
+
+            <label>
+              Correo electrónico
+              <input
+                type="email"
+                value={newEmail}
+                onChange={e => setNewEmail(e.target.value)}
+                placeholder="usuario@empresa.com"
+                autoComplete="email"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  marginBottom: '1rem',
+                  borderRadius: 8,
+                  border: 'none',
+                  backgroundColor: '#24242a',
+                  color: '#ccc',
+                }}
+              />
+            </label>
+
+            <label>
+              Prefijo telefónico
+              <select
+                value={newPhonePrefix}
+                onChange={e => setNewPhonePrefix(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  marginBottom: '1rem',
+                  borderRadius: 8,
+                  border: 'none',
+                  backgroundColor: '#24242a',
+                  color: '#ccc',
+                  fontSize: '1rem',
+                }}
+              >
+                {phonePrefixes.map(p => (
+                  <option key={p.code} value={p.code}>
+                    {p.code} ({p.country})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Teléfono
+              <input
+                type="tel"
+                value={newPhone}
+                onChange={e => setNewPhone(e.target.value)}
+                placeholder="1234567890"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  marginBottom: '1rem',
+                  borderRadius: 8,
+                  border: 'none',
+                  backgroundColor: '#24242a',
+                  color: '#ccc',
+                }}
+              />
+            </label>
+
+            <label>
+              Cargo
+              <input
+                type="text"
+                value={newJobTitle}
+                onChange={e => setNewJobTitle(e.target.value)}
+                placeholder="Ejemplo: Soporte Técnico"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  marginBottom: '1rem',
+                  borderRadius: 8,
+                  border: 'none',
+                  backgroundColor: '#24242a',
+                  color: '#ccc',
+                }}
+              />
+            </label>
+
+            <label>
+              Sexo
+              <select
+                value={newGender}
+                onChange={e => setNewGender(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  marginBottom: '1rem',
+                  borderRadius: 8,
+                  border: 'none',
+                  backgroundColor: '#24242a',
+                  color: '#ccc',
+                  fontSize: '1rem',
+                }}
+              >
+                <option value="">Seleccione...</option>
+                <option value="M">Masculino</option>
+                <option value="F">Femenino</option>
+                <option value="O">Otro</option>
+              </select>
+            </label>
+
+            <label>
+              Fecha de nacimiento
+              <input
+                type="date"
+                value={newBirthDate}
+                onChange={e => setNewBirthDate(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  marginBottom: '1rem',
+                  borderRadius: 8,
+                  border: 'none',
+                  backgroundColor: '#24242a',
+                  color: '#ccc',
+                }}
+              />
+            </label>
+
+            <label>
+              Contraseña
+              <input
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Al menos 6 caracteres"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  marginBottom: '1rem',
+                  borderRadius: 8,
+                  border: 'none',
+                  backgroundColor: '#24242a',
+                  color: '#ccc',
+                }}
+              />
+            </label>
+
+            {createError && (
+              <p style={{ color: 'rgba(230, 57, 70, 0.8)', marginBottom: '1rem', fontWeight: '600', textAlign: 'center' }}>
+                {createError}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetCreateForm();
+                }}
+                style={{
+                  padding: '1rem 2rem',
+                  backgroundColor: '#444',
+                  border: 'none',
+                  borderRadius: 12,
+                  fontWeight: '700',
+                  fontSize: '1.1rem',
+                  cursor: 'pointer',
+                  color: '#ccc',
+                }}
+                disabled={creatingUser}
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={handleCreateUser}
+                disabled={creatingUser}
+                style={{
+                  padding: '1rem 2rem',
+                  backgroundColor: '#6B2233',
+                  border: 'none',
+                  borderRadius: 12,
+                  fontWeight: '700',
+                  fontSize: '1.1rem',
+                  cursor: creatingUser ? 'not-allowed' : 'pointer',
+                  color: '#000',
+                }}
+              >
+                {creatingUser ? 'Creando...' : 'Crear usuario'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

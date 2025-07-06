@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
-import styled, { keyframes } from 'styled-components';
-import { FaUsers, FaBriefcase, FaBuilding, FaUserFriends, FaComments } from 'react-icons/fa';
+import React, { useEffect, useState } from 'react';
+import styled from 'styled-components';
+import {
+  FaUsers,
+  FaUserFriends,
+  FaComments,
+  FaSearch,
+} from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import { useCategoryStore } from '../../../stores/categoryStore';
+import { useCompanyStore } from '../../../stores/companyStore';
+import { API_AVATAR } from '../../../services/routes/routesAPI';
 
 const colors = {
   fondo: '#0D0D11',
@@ -11,9 +19,8 @@ const colors = {
   acento: '#6B2233',
   sidebar: '#111117',
   header: '#1F1F23',
-  morado: '#6A0DAD',
-  vinotinto: '#8B1E3F',
 };
+
 
 const Layout = styled.div`
   display: flex;
@@ -30,7 +37,6 @@ const Drawer = styled.nav<{ expanded: boolean }>`
   padding: 1.8rem 1rem;
   gap: 1.5rem;
   transition: width 0.25s ease;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.6);
   user-select: none;
 `;
 
@@ -69,7 +75,6 @@ const Header = styled.header`
   color: ${colors.texto};
   font-weight: 600;
   font-size: 1.25rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   user-select: none;
 `;
 
@@ -78,6 +83,32 @@ const Content = styled.section`
   padding: 2rem 3rem;
   overflow-y: auto;
   color: ${colors.texto};
+`;
+
+const SearchBar = styled.div`
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background-color: ${colors.panel};
+  border-radius: 0.7rem;
+  padding: 0.8rem 1rem;
+`;
+
+const SearchInput = styled.input`
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: ${colors.texto};
+  font-size: 1rem;
+
+  &:focus {
+    outline: none;
+  }
+
+  &::placeholder {
+    color: ${colors.secundario};
+  }
 `;
 
 const GroupsGrid = styled.div`
@@ -90,23 +121,32 @@ const GroupCard = styled.div`
   background-color: ${colors.panel};
   border-radius: 1rem;
   padding: 1.8rem 2rem;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.25s ease;
 
   &:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(107, 34, 51, 0.7);
   }
 `;
 
-const GroupIcon = styled.div`
-  font-size: 3rem;
-  color: ${colors.acento};
+const GroupImage = styled.div<{ imageUrl?: string }>`
+  width: 100px;
+  height: 100px;
+  border-radius: 0.8rem;
   margin-bottom: 1rem;
+  background-color: ${colors.fondo};
+  background-size: cover;
+  background-position: center;
+  background-image: ${({ imageUrl }) =>
+    imageUrl ? `url(${imageUrl})` : 'none'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${colors.acento};
+  font-size: 2.5rem;
 `;
 
 const GroupName = styled.h3`
@@ -116,22 +156,29 @@ const GroupName = styled.h3`
   text-align: center;
 `;
 
-const GroupCount = styled.span`
+const GroupDescription = styled.span`
   font-size: 1rem;
   color: ${colors.secundario};
+  text-align: center;
 `;
 
 const ClientGroups: React.FC = () => {
   const [drawerExpanded, setDrawerExpanded] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
-  // Datos ejemplo de grupos
-  const groups = [
-    { id: 'corporate', name: 'Corporativos', icon: <FaBriefcase />, count: 48 },
-    { id: 'retail', name: 'Retail', icon: <FaBuilding />, count: 120 },
-    { id: 'vip', name: 'VIP', icon: <FaUserFriends />, count: 35 },
-    { id: 'otros', name: 'Otros', icon: <FaUsers />, count: 22 },
-  ];
+  const { categories, fetchCategories } = useCategoryStore();
+  const { company } = useCompanyStore();
+
+  useEffect(() => {
+    if (company?.id_company) {
+      fetchCategories(company.id_company, '2'); // Grupos
+    }
+  }, [company]);
+
+  const filteredGroups = categories.filter((group) =>
+    group.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const goToGroupClients = (groupId: string) => {
     navigate(`/clients/group/${groupId}`);
@@ -139,50 +186,69 @@ const ClientGroups: React.FC = () => {
 
   return (
     <Layout>
-   <Drawer
-  expanded={drawerExpanded}
-  onMouseEnter={() => setDrawerExpanded(true)}
-  onMouseLeave={() => setDrawerExpanded(false)}
->
-  <DrawerItem onClick={() => navigate('/dashboard')} title="Dashboard Principal" active={false}>
-    <FaUsers />
-    {drawerExpanded && 'Dashboard'}
-  </DrawerItem>
+      <Drawer
+        expanded={drawerExpanded}
+        onMouseEnter={() => setDrawerExpanded(true)}
+        onMouseLeave={() => setDrawerExpanded(false)}
+      >
+        <DrawerItem onClick={() => navigate('/dashboard')}>
+          <FaUsers />
+          {drawerExpanded && 'Dashboard'}
+        </DrawerItem>
 
-  <DrawerItem onClick={() => navigate('/cliente/grupo')} title="Grupos de Clientes" active={location.pathname === '/cliente/grupo'}>
-    {/* Icono de grupo personalizado o de librería */}
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      fill={drawerExpanded ? colors.acento : colors.texto}
-      viewBox="0 0 24 24"
-      width="24"
-      height="24"
-      style={{ minWidth: 24 }}
-    >
-      <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2 0-6 1-6 3v2h14v-2c0-2-4-3-6-3z" />
-    </svg>
-    {drawerExpanded && 'Grupos'}
-  </DrawerItem>
+        <DrawerItem active>
+          <FaUserFriends />
+          {drawerExpanded && 'Grupos'}
+        </DrawerItem>
 
-  <DrawerItem onClick={() => navigate('/cliente/grupo/crear')} title="Crear nuevo grupo" active={location.pathname === '/cliente/grupo/crear'}>
-    <FaComments />
-    {drawerExpanded && 'Crear grupo'}
-  </DrawerItem>
-</Drawer>
+        <DrawerItem onClick={() => navigate('/cliente/grupo/crear')}>
+          <FaComments />
+          {drawerExpanded && 'Crear grupo'}
+        </DrawerItem>
+      </Drawer>
 
       <Main>
         <Header>Grupos de Clientes</Header>
 
         <Content>
-          <GroupsGrid>
-            {groups.map((group) => (
-              <GroupCard key={group.id} onClick={() => goToGroupClients(group.id)} title={`Ver clientes en ${group.name}`}>
-                <GroupIcon>{group.icon}</GroupIcon>
-                <GroupName>{group.name}</GroupName>
-                <GroupCount>{group.count} clientes</GroupCount>
-              </GroupCard>
-            ))}
-          </GroupsGrid>
+          <SearchBar>
+            <FaSearch color={colors.secundario} />
+            <SearchInput
+              placeholder="Buscar grupo..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </SearchBar>
+
+          {filteredGroups.length === 0 ? (
+            <p style={{ color: colors.secundario, textAlign: 'center' }}>
+              No hay grupos que coincidan.
+            </p>
+          ) : (
+            <GroupsGrid>
+              {filteredGroups.map((group) => (
+                <GroupCard
+                  key={group.id_category}
+                  onClick={() => goToGroupClients(group.id_category)}
+                  title={`Ver clientes en ${group.name}`}
+                >
+                  <GroupImage
+                    imageUrl={
+                      group.image
+                        ? `${API_AVATAR}/${group.image}`
+                        : undefined
+                    }
+                  >
+                    {!group.image && <FaUserFriends />}
+                  </GroupImage>
+                  <GroupName>{group.name}</GroupName>
+                  <GroupDescription>
+                    {group.description || 'Sin descripción'}
+                  </GroupDescription>
+                </GroupCard>
+              ))}
+            </GroupsGrid>
+          )}
         </Content>
       </Main>
     </Layout>

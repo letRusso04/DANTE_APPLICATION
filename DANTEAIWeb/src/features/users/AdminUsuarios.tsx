@@ -1,25 +1,44 @@
-// UsuariosDashboard.tsx
-import React, { useState } from 'react';
-import styled from 'styled-components';
-import { FaUserEdit, FaUserTimes, FaTrashAlt, FaPlus, FaUsers, FaHome } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import styled from "styled-components";
+import {
+  FaUserEdit,
+  FaUserTimes,
+  FaTrashAlt,
+  FaPlus,
+  FaUsers,
+  FaHome,
+} from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import type { UserModel } from "../../models/userModels";
+import {
+  deleteUser,
+  getUsers,
+  updateOtherUser,
+} from "../../services/userServices";
+import EditUserModal from "./components/editModal";
+import CreateUserModal from "./components/createModal";
+import { API_AVATAR } from "../../services/routes/routesAPI";
+import { useCompanyStore } from "../../stores/companyStore";
 
+// Colores de la UI
 const colors = {
-  fondo: '#0D0D11',
-  panel: '#1A1A1F',
-  texto: '#E8E8E8',
-  acento: '#6B2233',
-  secundario: '#888',
-  verde: '#27AE60',
-  rojo: '#E74C3C',
+  fondo: "#0D0D11",
+  panel: "#1A1A1F",
+  texto: "#E8E8E8",
+  acento: "#6B2233",
+  secundario: "#888",
+  verde: "#27AE60",
+  rojo: "#E74C3C",
 };
+
+// Styled components...
 
 const Layout = styled.div`
   display: flex;
   height: 100vh;
   background-color: ${colors.fondo};
   color: ${colors.texto};
-  font-family: 'Poppins', sans-serif;
+  font-family: "Poppins", sans-serif;
 `;
 
 const Main = styled.main`
@@ -84,7 +103,7 @@ const ActionButtons = styled.div`
 `;
 
 const ActionBtn = styled.button<{ color?: string }>`
-  background: ${({ color }) => color || '#444'};
+  background: ${({ color }) => color || "#444"};
   color: white;
   padding: 0.4rem 0.6rem;
   border: none;
@@ -95,9 +114,9 @@ const ActionBtn = styled.button<{ color?: string }>`
     opacity: 0.85;
   }
 `;
-const Drawer = styled.div<{ expanded: boolean }>`
-  width: ${({ expanded }) => (expanded ? '220px' : '100px')};
 
+const Drawer = styled.div<{ expanded: boolean }>`
+  width: ${({ expanded }) => (expanded ? "220px" : "100px")};
   transition: width 0.3s;
   display: flex;
   flex-direction: column;
@@ -108,20 +127,18 @@ const DrawerItem = styled.div<{ active: boolean }>`
   display: flex;
   align-items: center;
   gap: 1rem;
-  color: ${({active}) => (active ? colors.acento : colors.texto)};
+  color: ${({ active }) => (active ? colors.acento : colors.texto)};
   padding: 0.7rem 1rem;
   border-radius: 8px;
   cursor: pointer;
   margin-bottom: 0.3rem;
-  background-color: ${({active})  => (active ? '#1f1f23' : 'transparent')};
+  background-color: ${({ active }) => (active ? "#1f1f23" : "transparent")};
   &:hover {
     background-color: #22222a;
+  }
+`;
 
-  }
-  svg {
-    min-width: 20px;
-  }
-`;const SearchInput = styled.input`
+const SearchInput = styled.input`
   background-color: #262630;
   border: 1px solid #3c3c3c;
   color: ${colors.texto};
@@ -145,19 +162,94 @@ const DrawerItem = styled.div<{ active: boolean }>`
 const UsuariosDashboard = () => {
   const navigate = useNavigate();
   const [drawerExpanded, setDrawerExpanded] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [users, setUsers] = useState<UserModel[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserModel | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  const users = [
-    { id: 1, name: 'Juan Pérez', email: 'juan@example.com', status: 'Activo' },
-    { id: 2, name: 'Ana Gómez', email: 'ana@example.com', status: 'Inactivo' },
-    { id: 3, name: 'Carlos Torres', email: 'carlos@example.com', status: 'Activo' },
-  ];
+  const company = useCompanyStore((state) => state.company);
+
+  useEffect(() => {
+    async function fetchUsers() {
+      setLoading(true);
+      const res = await getUsers();
+      if (res.success && res.users) {
+        setUsers(res.users);
+      } else {
+        setUsers([]);
+      }
+      setLoading(false);
+    }
+    fetchUsers();
+  }, []);
 
   const filteredUsers = users.filter(
     (user) =>
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("¿Estás seguro que deseas eliminar este usuario?"))
+      return;
+
+    const res = await deleteUser(id);
+    if (res.success) {
+      setUsers(users.filter((u) => u.id_user !== id));
+      alert("Usuario eliminado correctamente");
+    } else {
+      alert(`Error eliminando usuario: ${res.error || "Desconocido"}`);
+    }
+  };
+
+  const handleToggleActive = async (user: UserModel) => {
+    const newStatus = !user.is_active;
+    const res = await updateOtherUser(user.id_user, { is_active: newStatus });
+    if (res.success) {
+      setUsers(
+        users.map((u) =>
+          u.id_user === user.id_user ? { ...u, is_active: newStatus } : u
+        )
+      );
+      alert(`Usuario ${newStatus ? "activado" : "desactivado"} correctamente`);
+    } else {
+      alert(`Error actualizando estado: ${res.error || "Desconocido"}`);
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    const found = users.find((u) => u.id_user === id);
+    if (found) setSelectedUser(found);
+  };
+
+  const handleSaveUser = async (
+    changes: Partial<UserModel>,
+    avatarFile?: File,
+    newPassword?: string
+  ) => {
+    if (!selectedUser) return;
+
+    const formData = new FormData();
+    for (const key in changes) {
+      if ((changes as any)[key]) {
+        formData.append(key, (changes as any)[key]);
+      }
+    }
+    if (avatarFile) formData.append("avatar", avatarFile);
+    if (newPassword) formData.append("password", newPassword);
+
+    const res = await updateOtherUser(selectedUser.id_user, formData, true);
+
+    if (res.success && res.user) {
+      setUsers(
+        users.map((u) => (u.id_user === res.user.id_user ? res.user : u))
+      );
+      setSelectedUser(null);
+    } else {
+      alert(`Error actualizando: ${res.error || "Desconocido"}`);
+    }
+  };
 
   return (
     <Layout>
@@ -166,65 +258,155 @@ const UsuariosDashboard = () => {
         onMouseEnter={() => setDrawerExpanded(true)}
         onMouseLeave={() => setDrawerExpanded(false)}
       >
-        <DrawerItem onClick={() => navigate('/dashboard')} active={location.pathname === '/dashboard'}>
+        <DrawerItem
+          onClick={() => navigate("/dashboard")}
+          active={location.pathname === "/dashboard"}
+        >
           <FaHome />
-          {drawerExpanded && 'Dashboard'}
+          {drawerExpanded && "Dashboard"}
         </DrawerItem>
 
-        <DrawerItem onClick={() => navigate('/usuario/admin')} active={location.pathname === '/usuario/admin'}>
+        <DrawerItem
+          onClick={() => navigate("/usuario/admin")}
+          active={location.pathname === "/usuario/admin"}
+        >
           <FaUsers />
-          {drawerExpanded && 'Usuarios'}
+          {drawerExpanded && "Usuarios"}
         </DrawerItem>
       </Drawer>
 
       <Main>
         <Header>
           <Title>Gestión de Usuarios</Title>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <SearchInput
               placeholder="Buscar usuario..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <AddButton onClick={() => navigate('/usuarios/crear')}>
+            <AddButton onClick={() => setShowAddModal(true)}>
               <FaPlus /> Agregar Usuario
             </AddButton>
           </div>
         </Header>
 
-        <Table>
-          <thead>
-            <tr>
-              <Th>Nombre</Th>
-              <Th>Correo</Th>
-              <Th>Estado</Th>
-              <Th>Acciones</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map((user) => (
-              <tr key={user.id}>
-                <Td>{user.name}</Td>
-                <Td>{user.email}</Td>
-                <Td>{user.status}</Td>
-                <Td>
-                  <ActionButtons>
-                    <ActionBtn color={colors.verde}><FaUserEdit /></ActionBtn>
-                    <ActionBtn color={colors.acento}><FaUserTimes /></ActionBtn>
-                    <ActionBtn color={colors.rojo}><FaTrashAlt /></ActionBtn>
-                  </ActionButtons>
-                </Td>
-              </tr>
-            ))}
-            {filteredUsers.length === 0 && (
+        {loading ? (
+          <p>Cargando usuarios...</p>
+        ) : (
+          <Table>
+            <thead>
               <tr>
-                <Td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: colors.secundario }}>
-                  No se encontraron usuarios.
-                </Td>
+                <Th>Avatar</Th>
+                <Th>Nombre</Th>
+                <Th>Correo</Th>
+                <Th>Permisos</Th>
+                <Th>Estado</Th>
+                <Th>Acciones</Th>
               </tr>
-            )}
-          </tbody>
-        </Table>
+            </thead>
+            <tbody>
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <Td
+                    colSpan={5}
+                    style={{
+                      textAlign: "center",
+                      padding: "2rem",
+                      color: colors.secundario,
+                    }}
+                  >
+                    No se encontraron usuarios.
+                  </Td>
+                </tr>
+              ) : (
+                filteredUsers.map((user) => (
+                  <tr key={user.id_user}>
+                    <Td>
+                      {user.avatar_url ? (
+                        <img
+                          src={`${API_AVATAR}${user.avatar_url}`}
+                          alt="avatar"
+                          style={{
+                            width: "40px",
+                            height: "40px",
+                            borderRadius: "50%",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: "40px",
+                            height: "40px",
+                            borderRadius: "50%",
+                            backgroundColor: "#444",
+                          }}
+                        />
+                      )}
+                    </Td>
+                    <Td>{user.name}</Td>
+                    <Td>{user.email}</Td>
+                    <Td>{user.role}</Td>
+                    <Td
+                      style={{
+                        color: user.is_active ? colors.verde : colors.rojo,
+                      }}
+                    >
+                      {user.is_active ? "Activo" : "Inactivo"}
+                    </Td>
+                    <Td>
+                      <ActionButtons>
+                        <ActionBtn
+                          color={colors.verde}
+                          onClick={() => handleEdit(user.id_user)}
+                          title="Editar"
+                        >
+                          <FaUserEdit />
+                        </ActionBtn>
+                        <ActionBtn
+                          color={user.is_active ? colors.acento : colors.verde}
+                          onClick={() => handleToggleActive(user)}
+                          title={
+                            user.is_active
+                              ? "Desactivar usuario"
+                              : "Activar usuario"
+                          }
+                        >
+                          <FaUserTimes />
+                        </ActionBtn>
+                        <ActionBtn
+                          color={colors.rojo}
+                          onClick={() => handleDelete(user.id_user)}
+                          title="Eliminar"
+                        >
+                          <FaTrashAlt />
+                        </ActionBtn>
+                      </ActionButtons>
+                    </Td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </Table>
+        )}
+
+        {selectedUser && (
+          <EditUserModal
+            user={selectedUser}
+            onClose={() => setSelectedUser(null)}
+            onSave={handleSaveUser}
+          />
+        )}
+        {showAddModal && company?.id_company && (
+          <CreateUserModal
+            companyId={company.id_company}
+            onClose={() => setShowAddModal(false)}
+            onCreate={(newUser) => {
+              setUsers((prev) => [...prev, newUser]);
+              setShowAddModal(false);
+            }}
+          />
+        )}
       </Main>
     </Layout>
   );

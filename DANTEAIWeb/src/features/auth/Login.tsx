@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
+import star from "../../assets/stardust.png";
+import { loginCompany } from '../../services/companyServices';
+import { useCompanyStore } from '../../stores/companyStore';
+import { useNavigate } from 'react-router-dom';
 
 const colors = {
   fondo: '#121212',
@@ -7,7 +11,7 @@ const colors = {
   borde: '#3A3A44',
   texto: '#E8E8E8',
   placeholder: '#77787B',
-  acento: '#6B2233', // vinotinto oscuro apagado
+  acento: '#6B2233',
   error: '#E63946',
 };
 
@@ -17,7 +21,7 @@ const moveStars = keyframes`
 `;
 
 const Background = styled.div`
-  background: #000 url('https://www.transparenttextures.com/patterns/stardust.png') repeat;
+  background: #000 url('${star}') repeat;
   animation: ${moveStars} 180s linear infinite;
   background-size: cover;
   min-height: 100vh;
@@ -29,89 +33,87 @@ const Background = styled.div`
 
 const Card = styled.form`
   background: ${colors.panelFondo};
-  padding: 3rem 3.5rem;
-  border-radius: 1.2rem;
+  padding: 3rem;
+  border-radius: 1.5rem;
   box-shadow:
-    0 10px 30px rgba(0, 0, 0, 0.8),
-    inset 0 0 2px ${colors.borde};
-  width: 100%;
+    0 12px 35px rgba(0, 0, 0, 0.85),
+    0 0 0 1px ${colors.borde} inset;
   max-width: 420px;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.8rem;
   border: 1px solid ${colors.borde};
-  transition: box-shadow 0.3s ease;
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
 
   &:hover {
     box-shadow:
-      0 15px 40px rgba(0, 0, 0, 0.9),
-      inset 0 0 5px ${colors.borde};
+      0 16px 45px rgba(0, 0, 0, 0.9),
+      0 0 0 2px ${colors.borde} inset;
   }
 `;
 
 const Title = styled.h1`
-  font-weight: 700;
-  font-size: 2.2rem;
+  font-weight: 800;
+  font-size: 2.3rem;
   color: ${colors.acento};
   text-align: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   user-select: none;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
 `;
 
 const Label = styled.label`
   color: ${colors.placeholder};
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 500;
-  margin-bottom: 0.3rem;
-`;
-
-const InputGroup = styled.div`
-  display: flex;
-  flex-direction: column;
+  margin-bottom: 0.4rem;
 `;
 
 const Input = styled.input`
-  background: #24242a;
+  background: #1c1c22;
   border: 1px solid ${colors.borde};
-  border-radius: 0.6rem;
-  padding: 0.75rem 1.1rem;
+  border-radius: 0.65rem;
+  padding: 0.85rem 1.1rem;
   font-size: 1rem;
   color: ${colors.texto};
-  transition: border-color 0.3s ease, background 0.3s ease;
+  transition: all 0.3s ease;
 
   &::placeholder {
     color: ${colors.placeholder};
-    font-style: normal;
+    font-style: italic;
   }
 
   &:focus {
     outline: none;
     border-color: ${colors.acento};
-    background: #2d2d34;
+    background: #24242a;
+    box-shadow: 0 0 6px ${colors.acento}66;
   }
 `;
 
 const Button = styled.button`
   margin-top: 1rem;
   padding: 1rem;
-  font-weight: 600;
-  font-size: 1.1rem;
+  font-weight: 700;
+  font-size: 1.15rem;
   background: linear-gradient(90deg, #4a192f, #6b2233);
   color: #f5f5f5;
   border: none;
-  border-radius: 0.8rem;
+  border-radius: 0.9rem;
   cursor: pointer;
-  box-shadow: 0 0 10px rgba(107, 34, 51, 0.5);
-  transition: background 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 0 12px rgba(107, 34, 51, 0.6);
+  transition: all 0.35s ease;
 
   &:hover:not(:disabled) {
-    background: linear-gradient(90deg, #5c273f, #7a2e3f);
-    box-shadow: 0 0 18px rgba(122, 46, 63, 0.75);
+    background: linear-gradient(90deg, #5c273f, #842e43);
+    box-shadow: 0 0 20px rgba(122, 46, 63, 0.8);
+    transform: translateY(-2px);
   }
 
   &:disabled {
-    opacity: 0.55;
+    opacity: 0.6;
     cursor: not-allowed;
     box-shadow: none;
   }
@@ -120,22 +122,27 @@ const Button = styled.button`
 const ErrorMsg = styled.div`
   background: ${colors.error};
   color: #fff;
-  padding: 0.7rem 1rem;
+  padding: 0.9rem 1.2rem;
   font-size: 0.9rem;
-  border-radius: 0.5rem;
+  border-radius: 0.6rem;
   text-align: center;
   font-weight: 600;
-  user-select: none;
+  box-shadow: 0 0 10px ${colors.error}66;
+`;
+
+const InputGroup = styled.div`
+  display: flex;
+  flex-direction: column;
 `;
 
 const HelpLink = styled.a`
   color: ${colors.placeholder};
   text-align: center;
-  font-size: 0.9rem;
-  margin-top: 1.3rem;
+  font-size: 0.92rem;
+  margin-top: 1rem;
   cursor: pointer;
   font-weight: 500;
-  transition: color 0.25s;
+  transition: color 0.3s ease;
 
   &:hover {
     color: ${colors.acento};
@@ -148,20 +155,24 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
-      if (email === 'astro@empresa.com' && password === 'space123') {
-        alert('Bienvenido al sistema orbital 🧠');
-      } else {
-        setError('Acceso denegado: credenciales inválidas');
-      }
-    }, 1200);
+    const response = await loginCompany(email, password);
+
+    setLoading(false);
+
+    if (response.success) {
+      // Guardar en Zustand
+      useCompanyStore.getState().login(response.company, response.token);
+      navigate('/seleccion');
+    } else {
+      setError(response.error);
+    }
   };
 
   return (

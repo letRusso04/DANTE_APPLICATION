@@ -374,14 +374,7 @@ const Support: React.FC = () => {
           <FaComments />
           {drawerExpanded && 'Mensajería'}
         </DrawerItem>
-        <DrawerItem
-          active={false}
-          title="Grupos"
-          onClick={() => navigate('/chat-grupo')}
-        >
-          <FaLayerGroup />
-          {drawerExpanded && 'Grupos'}
-        </DrawerItem>
+
         <DrawerItem
           active
           title="Soporte"
